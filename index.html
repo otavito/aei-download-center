@@ -1,19 +1,16 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Download center</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+    <title>AEI Download Center</title>
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.js"></script>
     <style>
         :root {
             --primary-color: #0067a5;
             --accent-color: #0086d6;
             --light-bg: #f5f9fc;
             --header-height: 60px;
-            --sidebar-width: 240px;
-            --folder-color: #2666a3;
             --danger-color: #e53935;
             --help-button-bg: #a7d7a7;
             --help-button-hover-bg: #8bc38b;
@@ -30,7 +27,6 @@
             background-color: var(--light-bg);
             color: #333;
             line-height: 1.6;
-            direction: ltr;
         }
 
         header {
@@ -52,13 +48,6 @@
             display: flex;
             align-items: center;
             gap: 15px;
-        }
-
-        .logo img {
-            height: 36px;
-        }
-
-        .logo h1 {
             font-size: 1.5rem;
             font-weight: 600;
             color: #333;
@@ -86,36 +75,30 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
+            font-size: 0.9rem;
         }
 
-        .action-buttons button {
+        button {
             background-color: var(--primary-color);
             color: white;
             border: none;
             border-radius: 4px;
             padding: 8px 16px;
             cursor: pointer;
-            transition: background-color 0.2s;
             font-size: 0.9rem;
+            transition: background-color 0.2s;
         }
 
-        .action-buttons button:hover {
+        button:hover {
             background-color: var(--accent-color);
         }
 
         .main-content {
             margin-top: var(--header-height);
-            display: flex;
-            flex-direction: column;
             padding: 20px;
             max-width: 1200px;
             margin-left: auto;
             margin-right: auto;
-        }
-
-        #files-view {
-            display: flex;
-            flex-direction: column;
         }
 
         .programs-container {
@@ -131,18 +114,10 @@
             color: #333;
         }
 
-        .breadcrumb-nav {
-            margin-bottom: 20px;
-            color: #666;
-            font-size: 0.9rem;
-        }
-
         .file-grid {
             display: flex;
             flex-direction: column;
             gap: 12px;
-            margin-top: 0;
-            max-width: 100%;
             overflow-y: auto;
             padding-right: 8px;
         }
@@ -151,18 +126,9 @@
             width: 8px;
         }
 
-        .file-grid::-webkit-scrollbar-track {
-            background-color: #f1f1f1;
-            border-radius: 4px;
-        }
-
         .file-grid::-webkit-scrollbar-thumb {
             background-color: #ccc;
             border-radius: 4px;
-        }
-
-        .file-grid::-webkit-scrollbar-thumb:hover {
-            background-color: #999;
         }
 
         .item-card {
@@ -172,12 +138,9 @@
             padding: 15px 20px;
             cursor: pointer;
             transition: all 0.2s;
-            position: relative;
             display: flex;
-            flex-direction: row;
-            align-items: center;
-            text-align: left;
             gap: 15px;
+            align-items: center;
         }
 
         .item-card:hover {
@@ -192,56 +155,20 @@
             box-shadow: 0 4px 12px rgba(0, 102, 165, 0.2);
         }
 
-        .folder-icon,
         .item-icon {
             width: 40px;
             height: 40px;
-            min-width: 40px;
-            color: var(--folder-color);
+            color: #2666a3;
             flex-shrink: 0;
         }
 
         .item-name {
             font-weight: 500;
-            margin-bottom: 0;
-            word-break: break-word;
             flex: 1;
         }
 
         .item-info {
             font-size: 0.8rem;
-            color: #999;
-            white-space: nowrap;
-        }
-
-        .status-message {
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            font-size: 0.9rem;
-        }
-
-        .status-message.info {
-            background-color: #e3f2fd;
-            color: #1976d2;
-            border: 1px solid #bbdefb;
-        }
-
-        .status-message.success {
-            background-color: #e8f5e9;
-            color: #388e3c;
-            border: 1px solid #c8e6c9;
-        }
-
-        .status-message.error {
-            background-color: #ffebee;
-            color: #d32f2f;
-            border: 1px solid #ffcdd2;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 30px;
             color: #999;
         }
 
@@ -262,97 +189,47 @@
             max-width: 400px;
         }
 
-        .login-title {
+        .login-card h2 {
             color: var(--primary-color);
             margin-bottom: 15px;
             font-size: 1.8rem;
         }
 
-        .login-button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
+        .login-card button {
             padding: 12px 24px;
-            border-radius: 4px;
-            cursor: pointer;
             font-size: 1rem;
             margin-top: 20px;
-            transition: background-color 0.2s;
         }
 
-        .login-button:hover {
-            background-color: var(--accent-color);
-        }
-
-        .login-message {
-            margin-top: 15px;
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .error-message {
+        .login-error {
             color: var(--danger-color);
             padding: 10px;
-            margin-bottom: 15px;
+            margin: 15px 0;
             background-color: #ffebee;
             border: 1px solid #ffcdd2;
             border-radius: 4px;
+            display: none;
         }
 
-        .help-button {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            z-index: 999;
-            padding: 0;
-            border: none;
-            background-color: var(--help-button-bg);
+        .unauthorized-card {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            margin: auto;
         }
 
-        .help-button:hover {
-            background-color: var(--help-button-hover-bg);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            transform: scale(1.1);
-        }
-
-        .help-button svg {
-            width: 24px;
-            height: 24px;
-            stroke: #333;
-            stroke-width: 2;
+        .unauthorized-card h2 {
+            color: var(--danger-color);
+            margin-bottom: 20px;
         }
 
         .program-details {
-            margin-top: 0;
             display: none;
             overflow-y: auto;
             padding-right: 8px;
-        }
-
-        .program-details::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .program-details::-webkit-scrollbar-track {
-            background-color: #f1f1f1;
-            border-radius: 4px;
-        }
-
-        .program-details::-webkit-scrollbar-thumb {
-            background-color: #ccc;
-            border-radius: 4px;
-        }
-
-        .program-details::-webkit-scrollbar-thumb:hover {
-            background-color: #999;
         }
 
         .program-details.visible {
@@ -372,6 +249,7 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             border-radius: 6px;
             overflow: hidden;
+            margin-bottom: 20px;
         }
 
         .versions-table-obsolete {
@@ -383,20 +261,10 @@
             color: white;
         }
 
-        .versions-table th {
-            padding: 12px 15px;
-            text-align: left;
-            font-weight: 600;
-            border-bottom: 2px solid var(--primary-color);
-        }
-
+        .versions-table th,
         .versions-table td {
             padding: 12px 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .versions-table tbody tr:hover {
-            background-color: #f5f5f5;
+            text-align: left;
         }
 
         .versions-table a {
@@ -413,157 +281,142 @@
             background-color: #d4edda;
         }
 
-        .versions-table-latest tbody tr td {
-            padding: 12px 15px;
-        }
-
         .back-button {
             background-color: #f1f1f1;
             color: #333;
             border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 0.9rem;
             margin-top: 15px;
-            transition: all 0.2s;
+            padding: 8px 16px;
         }
 
         .back-button:hover {
             background-color: #e1e1e1;
-            border-color: #999;
         }
 
-        .unauthorized-container {
+        .help-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-        }
-
-        .unauthorized-card {
-            background: white;
-            border-radius: 8px;
-            padding: 40px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 500px;
-        }
-
-        .unauthorized-card h2 {
-            color: var(--danger-color);
-            margin-bottom: 20px;
-            font-size: 1.8rem;
-        }
-
-        .unauthorized-card p {
-            color: #666;
-            margin-bottom: 20px;
-            font-size: 1rem;
-            line-height: 1.6;
-        }
-
-        .unauthorized-card button {
-            background-color: var(--primary-color);
-            color: white;
+            padding: 0;
+            background-color: var(--help-button-bg);
             border: none;
-            padding: 12px 24px;
-            border-radius: 4px;
             cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.2s;
+            transition: all 0.3s;
+            z-index: 999;
         }
 
-        .unauthorized-card button:hover {
-            background-color: var(--accent-color);
+        .help-button:hover {
+            background-color: var(--help-button-hover-bg);
+            transform: scale(1.1);
+        }
+
+        .help-button svg {
+            width: 24px;
+            height: 24px;
+            stroke: #333;
+            stroke-width: 2;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #999;
         }
     </style>
 </head>
 
 <body>
     <header>
-        <div class="logo">
-            <img src="logo.png" alt="Logo">
-            <h1>Download Center</h1>
-        </div>
-        <div id="user-section" class="user-section">
-            <div id="user-info" class="user-info" style="display: none;">
-                <div class="user-avatar" id="user-avatar">TU</div>
-                <span id="username">Test User</span>
+        <div class="logo">📥 AEI Download Center</div>
+        <div class="user-section">
+            <div id="user-info" class="user-info hidden">
+                <div class="user-avatar" id="user-avatar">-</div>
+                <span id="username">User</span>
             </div>
-            <div class="action-buttons">
-                <button id="login-header-button" style="display: none;">Login</button>
-                <button id="logout-button" style="display: none;">Logout</button>
-            </div>
+            <button id="login-btn" class="hidden">Sign In</button>
+            <button id="logout-btn" class="hidden">Sign Out</button>
         </div>
     </header>
 
     <main class="main-content">
-        <div id="login-view" class="login-container" style="display: none;">
+        <!-- LOGIN VIEW -->
+        <div id="login-view" class="login-container hidden">
             <div class="login-card">
-                <h2 class="login-title">Welcome to AEI Download Center</h2>
-                <p>Please sign in to access files.</p>
-                <div id="login-error" class="error-message" style="display: none;"></div>
-                <div id="loading-spinner" class="loading" style="display: none;">Logging in...</div>
-                <button id="login-button" class="login-button">Sign In with Microsoft</button>
-                <p class="login-message">Secure access to support resources.</p>
+                <h2>Welcome</h2>
+                <p>Please sign in to access download files</p>
+                <div id="login-error" class="login-error"></div>
+                <div id="login-loading" class="loading hidden">Signing in...</div>
+                <button id="signin-btn">Sign In with Microsoft</button>
+                <p style="margin-top: 20px; color: #666; font-size: 0.9rem;">Secure access to program downloads</p>
             </div>
         </div>
 
-        <div id="unauthorized-view" class="unauthorized-container" style="display: none;">
+        <!-- UNAUTHORIZED VIEW -->
+        <div id="unauthorized-view" class="login-container hidden">
             <div class="unauthorized-card">
-                <h2>Access Denied</h2>
-                <p>Your account does not have permission to access this resource. Please contact your administrator if you believe this is an error.</p>
-                <button id="logout-unauthorized-button">Sign Out</button>
+                <h2>❌ Access Denied</h2>
+                <p>Your account does not have permission to access this resource.</p>
+                <p style="margin-top: 15px; color: #666;">Please contact your administrator.</p>
+                <button id="signout-btn" style="margin-top: 20px;">Sign Out</button>
             </div>
         </div>
 
-        <div id="files-view" style="display: none;">
+        <!-- FILES VIEW -->
+        <div id="files-view" class="hidden">
             <h1 class="page-title">Programs</h1>
 
             <div class="programs-container">
                 <div id="files-list" class="file-grid">
-                    <!-- Cards will be generated dynamically from programs.json -->
+                    <!-- Program cards generated here -->
                 </div>
 
                 <div id="program-details" class="program-details">
                     <h2 id="program-title">Program Versions</h2>
+                    
                     <table class="versions-table versions-table-latest">
                         <thead>
                             <tr>
                                 <th>Program</th>
                                 <th>Version</th>
-                                <th>Link</th>
+                                <th>Download</th>
                                 <th>Release Note</th>
                             </tr>
                         </thead>
-                        <tbody id="versions-tbody-latest">
-                            <!-- Latest version will be inserted here by JavaScript -->
-                        </tbody>
+                        <tbody id="latest-tbody"></tbody>
                     </table>
-                    <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333; font-size: 1.1rem;">Previous</h3>
+
+                    <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333;">Previous Versions</h3>
+                    
                     <table class="versions-table versions-table-obsolete">
                         <thead>
                             <tr>
                                 <th>Program</th>
                                 <th>Version</th>
-                                <th>Link</th>
+                                <th>Download</th>
                                 <th>Release Note</th>
                             </tr>
                         </thead>
-                        <tbody id="versions-tbody-obsolete">
-                            <!-- Obsolete versions will be inserted here by JavaScript -->
-                        </tbody>
+                        <tbody id="obsolete-tbody"></tbody>
                     </table>
-                    <button class="back-button" id="back-button">← Back to Programs</button>
+
+                    <button class="back-button" id="back-btn">← Back to Programs</button>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Help Button -->
-    <button id="help-button" class="help-button" title="Help">
+    <!-- HELP BUTTON -->
+    <button id="help-btn" class="help-button" title="Help">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <circle cx="12" cy="12" r="10"></circle>
             <path d="M12 16v-4M12 8h.01"></path>
@@ -571,376 +424,325 @@
     </button>
 
     <script>
-        // ============================================
-        // MSAL Configuration - CHANGE THESE VALUES
-        // ============================================
-        const MSAL_CONFIG = {
+        console.log("Script starting...");
+
+        // ===== MSAL Configuration =====
+        const msalConfig = {
             auth: {
-                clientId: "b1438db9-79e6-457a-99fd-66e7ae4fe160",      // Your App Client ID
-                authority: "https://login.microsoftonline.com/81dbb0d4-0d50-4aa5-a35c-04b98c73f3e0", // Your Tenant ID
-                redirectUri: window.location.origin                     // Static Web App URL
+                clientId: "b1438db9-79e6-457a-99fd-66e7ae4fe160",
+                authority: "https://login.microsoftonline.com/81dbb0d4-0d50-4aa5-a35c-04b98c73f3e0",
+                redirectUri: window.location.origin
             },
             cache: {
-                cacheLocation: "sessionStorage",
-                storeAuthStateInCookie: false
+                cacheLocation: "sessionStorage"
             }
         };
 
-        const LOGIN_REQUEST = {
-            scopes: ["openid", "profile", "User.Read"]
+        const loginRequest = {
+            scopes: ["User.Read"]
         };
 
-        const GRAPH_REQUEST = {
+        const graphRequest = {
             scopes: ["https://graph.microsoft.com/.default"]
         };
 
-        // GROUP ID - Change this to your group's Object ID
-        const ALLOWED_GROUP_ID = "622b603c-f4df-41cd-88fb-ea857d6ddf79";
+        const ALLOWED_GROUP = "622b603c-f4df-41cd-88fb-ea857d6ddf79";
 
-        // ============================================
-        // Initialize MSAL
-        // ============================================
-        const msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
-
+        // ===== Variables =====
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
         let currentAccount = null;
-        let selectedProgramId = null;
         let programsData = {};
+        let selectedProgram = null;
 
-        // DOM Elements
+        // ===== DOM Elements =====
         const loginView = document.getElementById("login-view");
         const filesView = document.getElementById("files-view");
         const unauthorizedView = document.getElementById("unauthorized-view");
-        const loginButton = document.getElementById("login-button");
-        const logoutButton = document.getElementById("logout-button");
-        const logoutUnauthorizedButton = document.getElementById("logout-unauthorized-button");
-        const loginHeaderButton = document.getElementById("login-header-button");
         const userInfo = document.getElementById("user-info");
-        const usernameSpan = document.getElementById("username");
+        const username = document.getElementById("username");
         const userAvatar = document.getElementById("user-avatar");
+        const loginBtn = document.getElementById("login-btn");
+        const logoutBtn = document.getElementById("logout-btn");
+        const signinBtn = document.getElementById("signin-btn");
+        const signoutBtn = document.getElementById("signout-btn");
+        const helpBtn = document.getElementById("help-btn");
         const loginError = document.getElementById("login-error");
-        const loadingSpinner = document.getElementById("loading-spinner");
+        const loadingSpinner = document.getElementById("login-loading");
 
-        // ============================================
-        // Initialize & Check Authentication
-        // ============================================
-        msalInstance.initialize().then(() => {
-            handleRedirect();
-            checkAuthStatus();
-        }).catch(error => {
-            console.error("MSAL initialization error:", error);
-            showLoginView();
-        });
-
-        function handleRedirect() {
-            msalInstance.handleRedirectPromise().then(response => {
-                if (response) {
-                    currentAccount = response.account;
-                    msalInstance.setActiveAccount(currentAccount);
-                    checkGroupMembership();
-                }
-            }).catch(error => {
-                console.error("Redirect error:", error);
-            });
+        // ===== Initialize =====
+        async function init() {
+            console.log("Initializing MSAL...");
+            try {
+                await msalInstance.initialize();
+                console.log("MSAL initialized");
+                
+                handleRedirect();
+                checkAuth();
+            } catch (error) {
+                console.error("Init error:", error);
+                showLogin();
+            }
         }
 
-        function checkAuthStatus() {
+        // ===== Authentication =====
+        function handleRedirect() {
+            msalInstance.handleRedirectPromise()
+                .then(response => {
+                    if (response) {
+                        currentAccount = response.account;
+                        msalInstance.setActiveAccount(currentAccount);
+                        console.log("Redirect handled, account set");
+                        checkMembership();
+                    }
+                })
+                .catch(error => {
+                    console.error("Redirect error:", error);
+                    showLogin();
+                });
+        }
+
+        function checkAuth() {
             const accounts = msalInstance.getAllAccounts();
             if (accounts.length > 0) {
                 currentAccount = accounts[0];
                 msalInstance.setActiveAccount(currentAccount);
-                checkGroupMembership();
+                console.log("Account found:", currentAccount.name);
+                checkMembership();
             } else {
-                showLoginView();
+                console.log("No account found");
+                showLogin();
             }
         }
 
-        // ============================================
-        // View Management
-        // ============================================
-        function showLoginView() {
-            loginView.style.display = "flex";
-            filesView.style.display = "none";
-            unauthorizedView.style.display = "none";
-            userInfo.style.display = "none";
-            loginHeaderButton.style.display = "inline-block";
-            logoutButton.style.display = "none";
-        }
-
-        function showFilesView() {
-            loginView.style.display = "none";
-            filesView.style.display = "block";
-            unauthorizedView.style.display = "none";
-            userInfo.style.display = "flex";
-            loginHeaderButton.style.display = "none";
-            logoutButton.style.display = "inline-block";
-            updateUserUI();
-            loadPrograms();
-        }
-
-        function showUnauthorizedView() {
-            loginView.style.display = "none";
-            filesView.style.display = "none";
-            unauthorizedView.style.display = "flex";
-            userInfo.style.display = "flex";
-            loginHeaderButton.style.display = "none";
-            logoutButton.style.display = "none";
-            updateUserUI();
-        }
-
-        function updateUserUI() {
-            if (currentAccount) {
-                usernameSpan.textContent = currentAccount.name || currentAccount.username;
-                const initials = (currentAccount.name || currentAccount.username)
-                    .split(' ')
-                    .map(n => n[0])
-                    .join('')
-                    .toUpperCase();
-                userAvatar.textContent = initials;
-            }
-        }
-
-        // ============================================
-        // Authentication & Authorization
-        // ============================================
-        async function checkGroupMembership() {
+        async function checkMembership() {
             try {
-                showLoginView();
-                loadingSpinner.style.display = "block";
-                loginError.style.display = "none";
+                showLogin();
+                loadingSpinner.classList.remove("hidden");
+                loginError.classList.add("hidden");
 
-                const token = await acquireToken();
-                const isInGroup = await getUserGroupMembership(token);
+                const token = await getToken();
+                const isMember = await checkGroupMember(token);
 
-                loadingSpinner.style.display = "none";
+                loadingSpinner.classList.add("hidden");
 
-                if (isInGroup) {
-                    showFilesView();
+                if (isMember) {
+                    showFiles();
                 } else {
-                    showUnauthorizedView();
+                    showUnauthorized();
                 }
             } catch (error) {
-                console.error("Error checking group membership:", error);
-                loadingSpinner.style.display = "none";
-                loginError.textContent = `Error: ${error.message}`;
-                loginError.style.display = "block";
-                showLoginView();
+                console.error("Membership check error:", error);
+                loadingSpinner.classList.add("hidden");
+                loginError.textContent = error.message;
+                loginError.classList.remove("hidden");
             }
         }
 
-        async function acquireToken() {
+        async function getToken() {
             try {
                 const response = await msalInstance.acquireTokenSilent({
-                    ...GRAPH_REQUEST,
+                    ...graphRequest,
                     account: currentAccount
                 });
                 return response.accessToken;
             } catch (error) {
-                console.log("Silent token acquisition failed, trying popup...");
-                const response = await msalInstance.acquireTokenPopup(GRAPH_REQUEST);
+                const response = await msalInstance.acquireTokenPopup(graphRequest);
                 return response.accessToken;
             }
         }
 
-        async function getUserGroupMembership(accessToken) {
-            try {
-                const response = await fetch('https://graph.microsoft.com/v1.0/me/memberOf?$select=id', {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Graph API error: ${response.status} ${response.statusText}`);
+        async function checkGroupMember(token) {
+            const response = await fetch("https://graph.microsoft.com/v1.0/me/memberOf", {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
                 }
+            });
 
-                const data = await response.json();
-                
-                // Check if user is member of the allowed group
-                const userGroups = data.value.map(item => item.id);
-                return userGroups.includes(ALLOWED_GROUP_ID);
+            if (!response.ok) throw new Error("Failed to check membership");
 
-            } catch (error) {
-                console.error("Error fetching group membership:", error);
-                throw error;
-            }
+            const data = await response.json();
+            const groupIds = data.value
+                .filter(item => item["@odata.type"] === "#microsoft.graph.group")
+                .map(group => group.id);
+
+            return groupIds.includes(ALLOWED_GROUP);
         }
 
-        // ============================================
-        // Login & Logout
-        // ============================================
-        function login() {
-            loginError.style.display = "none";
-            loadingSpinner.style.display = "block";
+        async function login() {
+            loginError.classList.add("hidden");
+            loadingSpinner.classList.remove("hidden");
 
-            msalInstance.loginPopup(LOGIN_REQUEST).then(response => {
+            try {
+                const response = await msalInstance.loginPopup(loginRequest);
                 currentAccount = response.account;
                 msalInstance.setActiveAccount(currentAccount);
-                loadingSpinner.style.display = "none";
-                checkGroupMembership();
-            }).catch(error => {
+                loadingSpinner.classList.add("hidden");
+                checkMembership();
+            } catch (error) {
                 console.error("Login error:", error);
-                loadingSpinner.style.display = "none";
-                loginError.textContent = `Login failed: ${error.errorCode || error.message}`;
-                loginError.style.display = "block";
-            });
+                loadingSpinner.classList.add("hidden");
+                loginError.textContent = error.message;
+                loginError.classList.remove("hidden");
+            }
         }
 
         function logout() {
             currentAccount = null;
             msalInstance.logoutPopup({
                 mainWindowRedirectUri: window.location.origin
-            }).catch(error => {
-                console.error("Logout error:", error);
-                showLoginView();
-            });
+            }).catch(() => showLogin());
         }
 
-        // ============================================
-        // Load Programs from JSON
-        // ============================================
+        // ===== Views =====
+        function showLogin() {
+            loginView.classList.remove("hidden");
+            filesView.classList.add("hidden");
+            unauthorizedView.classList.add("hidden");
+            userInfo.classList.add("hidden");
+            loginBtn.classList.add("hidden");
+            logoutBtn.classList.add("hidden");
+        }
+
+        function showFiles() {
+            loginView.classList.add("hidden");
+            filesView.classList.remove("hidden");
+            unauthorizedView.classList.add("hidden");
+            userInfo.classList.remove("hidden");
+            loginBtn.classList.add("hidden");
+            logoutBtn.classList.remove("hidden");
+
+            updateUser();
+            loadPrograms();
+        }
+
+        function showUnauthorized() {
+            loginView.classList.add("hidden");
+            filesView.classList.add("hidden");
+            unauthorizedView.classList.remove("hidden");
+            userInfo.classList.remove("hidden");
+            loginBtn.classList.add("hidden");
+            logoutBtn.classList.add("hidden");
+
+            updateUser();
+        }
+
+        function updateUser() {
+            if (currentAccount) {
+                username.textContent = currentAccount.name || currentAccount.username;
+                const initials = (currentAccount.name || "U")
+                    .split(" ")
+                    .map(n => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .substring(0, 2);
+                userAvatar.textContent = initials;
+            }
+        }
+
+        // ===== Programs =====
         async function loadPrograms() {
             try {
-                const response = await fetch('programs.json');
-                if (!response.ok) {
-                    throw new Error(`Failed to load programs.json: ${response.status}`);
-                }
+                const response = await fetch("programs.json");
+                if (!response.ok) throw new Error("Failed to load programs");
                 const data = await response.json();
-                programsData = {};
 
-                data.programs.forEach(program => {
-                    programsData[program.id] = program;
+                programsData = {};
+                data.programs.forEach(prog => {
+                    programsData[prog.id] = prog;
                 });
 
-                generateProgramCards();
+                renderPrograms();
             } catch (error) {
-                console.error("Error loading programs:", error);
-                const filesList = document.getElementById('files-list');
-                filesList.innerHTML = `<div class="status-message error">Error loading programs: ${error.message}</div>`;
+                console.error("Load programs error:", error);
+                document.getElementById("files-list").innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
             }
         }
 
-        // ============================================
-        // Generate Program Cards
-        // ============================================
-        function generateProgramCards() {
-            const filesList = document.getElementById('files-list');
-            filesList.innerHTML = '';
+        function renderPrograms() {
+            const list = document.getElementById("files-list");
+            list.innerHTML = "";
 
-            Object.keys(programsData).forEach(programId => {
-                const program = programsData[programId];
-                const card = document.createElement('div');
-                card.className = 'item-card';
-                card.setAttribute('data-program-id', programId);
-
-                const iconSvg = document.createElement('svg');
-                iconSvg.className = 'item-icon';
-                iconSvg.viewBox = '0 0 24 24';
-                iconSvg.fill = 'currentColor';
-                iconSvg.innerHTML = '<path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>';
-
-                const textContainer = document.createElement('div');
-                textContainer.style.flex = '1';
-
-                const nameDiv = document.createElement('div');
-                nameDiv.className = 'item-name';
-                nameDiv.textContent = program.name;
-
-                const infoDiv = document.createElement('div');
-                infoDiv.className = 'item-info';
-                infoDiv.textContent = `Latest: ${program.lastVersion}`;
-
-                textContainer.appendChild(nameDiv);
-                textContainer.appendChild(infoDiv);
-
-                card.appendChild(iconSvg);
-                card.appendChild(textContainer);
-
-                card.addEventListener('click', () => selectProgram(programId));
-
-                filesList.appendChild(card);
+            Object.keys(programsData).forEach(id => {
+                const prog = programsData[id];
+                const card = document.createElement("div");
+                card.className = "item-card";
+                card.innerHTML = `
+                    <svg class="item-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                    </svg>
+                    <div>
+                        <div class="item-name">${prog.name}</div>
+                        <div class="item-info">Latest: ${prog.lastVersion}</div>
+                    </div>
+                `;
+                card.addEventListener("click", () => selectProgram(id));
+                list.appendChild(card);
             });
         }
 
-        // ============================================
-        // Select Program & Display Versions
-        // ============================================
-        function selectProgram(programId) {
-            document.querySelectorAll('.item-card').forEach(card => {
-                card.classList.remove('selected');
-            });
+        function selectProgram(id) {
+            selectedProgram = id;
+            const prog = programsData[id];
 
-            const selectedCard = document.querySelector(`[data-program-id="${programId}"]`);
-            if (selectedCard) {
-                selectedCard.classList.add('selected');
+            document.querySelectorAll(".item-card").forEach(c => c.classList.remove("selected"));
+            event.target.closest(".item-card")?.classList.add("selected");
+
+            document.getElementById("program-title").textContent = `${prog.name} - Versions`;
+
+            // Latest
+            const latest = document.getElementById("latest-tbody");
+            latest.innerHTML = "";
+            if (prog.versions.length > 0) {
+                const v = prog.versions[0];
+                latest.innerHTML = `
+                    <tr>
+                        <td>${v.program}</td>
+                        <td>${v.version}</td>
+                        <td><a href="${v.link}" target="_blank">Download</a></td>
+                        <td><a href="${v.releaseNote}" target="_blank">View</a></td>
+                    </tr>
+                `;
             }
 
-            selectedProgramId = programId;
-
-            const programData = programsData[programId];
-            if (programData) {
-                document.getElementById('program-title').textContent = `${programData.name} - Versions`;
-
-                // Latest version in first table
-                const tbodyLatest = document.getElementById('versions-tbody-latest');
-                tbodyLatest.innerHTML = '';
-
-                if (programData.versions.length > 0) {
-                    const latestVersion = programData.versions[0];
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${latestVersion.program}</td>
-                        <td>${latestVersion.version}</td>
-                        <td><a href="${latestVersion.link}" target="_blank">Download</a></td>
-                        <td><a href="${latestVersion.releaseNote}" target="_blank">View Release Note</a></td>
-                    `;
-                    tbodyLatest.appendChild(row);
-                }
-
-                // Obsolete versions in second table
-                const tbodyObsolete = document.getElementById('versions-tbody-obsolete');
-                tbodyObsolete.innerHTML = '';
-
-                for (let i = 1; i < programData.versions.length; i++) {
-                    const version = programData.versions[i];
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${version.program}</td>
-                        <td>${version.version}</td>
-                        <td><a href="${version.link}" target="_blank">Download</a></td>
-                        <td><a href="${version.releaseNote}" target="_blank">View Release Note</a></td>
-                    `;
-                    tbodyObsolete.appendChild(row);
-                }
-
-                document.getElementById('program-details').classList.add('visible');
+            // Obsolete
+            const obsolete = document.getElementById("obsolete-tbody");
+            obsolete.innerHTML = "";
+            for (let i = 1; i < prog.versions.length; i++) {
+                const v = prog.versions[i];
+                obsolete.innerHTML += `
+                    <tr>
+                        <td>${v.program}</td>
+                        <td>${v.version}</td>
+                        <td><a href="${v.link}" target="_blank">Download</a></td>
+                        <td><a href="${v.releaseNote}" target="_blank">View</a></td>
+                    </tr>
+                `;
             }
+
+            document.getElementById("program-details").classList.add("visible");
         }
 
-        function backToPrograms() {
-            document.getElementById('program-details').classList.remove('visible');
-            document.querySelectorAll('.item-card').forEach(card => {
-                card.classList.remove('selected');
-            });
-            selectedProgramId = null;
-        }
+        // ===== Events =====
+        signinBtn.addEventListener("click", login);
+        signoutBtn.addEventListener("click", logout);
+        loginBtn.addEventListener("click", login);
+        logoutBtn.addEventListener("click", logout);
 
-        // ============================================
-        // Event Listeners
-        // ============================================
-        loginButton.addEventListener('click', login);
-        logoutButton.addEventListener('click', logout);
-        logoutUnauthorizedButton.addEventListener('click', logout);
-        loginHeaderButton.addEventListener('click', login);
+        document.getElementById("back-btn").addEventListener("click", () => {
+            document.getElementById("program-details").classList.remove("visible");
+            document.querySelectorAll(".item-card").forEach(c => c.classList.remove("selected"));
+            selectedProgram = null;
+        });
 
-        document.getElementById('back-button').addEventListener('click', backToPrograms);
+        helpBtn.addEventListener("click", () => {
+            console.log("Help button clicked");
+            window.open("https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588", "_blank");
+        });
 
-        const helpButton = document.getElementById('help-button');
-        if (helpButton) {
-            helpButton.addEventListener('click', () => {
-                window.open('https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588', '_blank');
-            });
-        }
+        // Start
+        console.log("DOM ready, calling init...");
+        init();
     </script>
 </body>
 
