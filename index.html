@@ -1,9 +1,11 @@
+<!DOCTYPE html>
 <html>
+
 <head>
     <title>Download center</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
     <style>
         :root {
             --primary-color: #0067a5;
@@ -11,10 +13,10 @@
             --light-bg: #f5f9fc;
             --header-height: 60px;
             --sidebar-width: 240px;
-            --folder-color: #2666a3; 
+            --folder-color: #2666a3;
             --danger-color: #e53935;
-            --help-button-bg: #a7d7a7; 
-            --help-button-hover-bg: #8bc38b; 
+            --help-button-bg: #a7d7a7;
+            --help-button-hover-bg: #8bc38b;
         }
 
         * {
@@ -38,7 +40,7 @@
             background-color: white;
             height: var(--header-height);
             padding: 0 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             position: fixed;
             top: 0;
             left: 0;
@@ -103,244 +105,178 @@
 
         .main-content {
             margin-top: var(--header-height);
-            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
             max-width: 1200px;
             margin-left: auto;
             margin-right: auto;
         }
 
+        #files-view {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .programs-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 40px;
+            height: calc(100vh - 140px);
+        }
+
         .page-title {
-            margin-bottom: 10px;
-            color: #333;
             font-size: 1.8rem;
-            font-weight: 500;
+            margin-bottom: 20px;
+            color: #333;
         }
 
         .breadcrumb-nav {
             margin-bottom: 20px;
+            color: #666;
             font-size: 0.9rem;
-            color: #555;
-        }
-        .breadcrumb-nav a {
-            color: var(--primary-color);
-            text-decoration: none;
-        }
-        .breadcrumb-nav a:hover {
-            text-decoration: underline;
-        }
-        .breadcrumb-nav span {
-            margin: 0 5px;
-        }
-
-        .controls-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .search-box {
-            flex-grow: 1;
-            max-width: 500px;
-        }
-
-        .search-container {
-            display: flex;
-            background-color: white;
-            border-radius: 6px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            overflow: hidden;
-        }
-
-        .search-input {
-            flex: 1;
-            padding: 10px 14px;
-            border: none;
-            outline: none;
-            font-size: 0.95rem;
-        }
-
-        .search-button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 18px;
-            cursor: pointer;
-            font-size: 0.95rem;
-            transition: background-color 0.2s;
-        }
-
-        .search-button:hover {
-            background-color: var(--accent-color);
-        }
-
-        .admin-controls {
-            display: flex;
-            gap: 10px;
-        }
-        .admin-controls button {
-             background-color: var(--accent-color);
-             padding: 10px 15px;
-             font-size: 0.9rem;
-        }
-         .admin-controls button:hover {
-             background-color: var(--primary-color);
-         }
-        #file-upload-input {
-            display: none;
         }
 
         .file-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 0;
+            max-width: 100%;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .file-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .file-grid::-webkit-scrollbar-track {
+            background-color: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .file-grid::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 4px;
+        }
+
+        .file-grid::-webkit-scrollbar-thumb:hover {
+            background-color: #999;
         }
 
         .item-card {
             background-color: white;
+            border: 2px solid #e0e0e0;
             border-radius: 6px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            padding: 15px;
-            transition: transform 0.2s, box-shadow 0.2s;
+            padding: 15px 20px;
             cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            min-height: 130px;
+            transition: all 0.2s;
             position: relative;
-            text-align: center;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            text-align: left;
+            gap: 15px;
         }
 
         .item-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary-color);
+            background-color: #f9f9f9;
         }
 
-        .folder-icon {
-            width: 60px;
-            height: 60px;
-            background-color: var(--folder-color); 
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .item-card.selected {
+            border-color: var(--primary-color);
+            background-color: var(--light-bg);
+            box-shadow: 0 4px 12px rgba(0, 102, 165, 0.2);
         }
 
-        .folder-icon svg {
-            width: 32px;
-            height: 32px;
-            fill: white;
-        }
-
+        .folder-icon,
         .item-icon {
             width: 40px;
             height: 40px;
-            background-color: var(--light-bg);
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 10px;
+            min-width: 40px;
+            color: var(--folder-color);
+            flex-shrink: 0;
         }
-
-        .item-icon svg {
-            width: 22px;
-            height: 22px;
-        }
-
-        .file-icon svg { fill: var(--primary-color); }
 
         .item-name {
             font-weight: 500;
-            color: #555;
-            margin-bottom: 5px;
-            word-break: break-all;
-            font-size: 0.9rem;
+            margin-bottom: 0;
+            word-break: break-word;
+            flex: 1;
         }
 
         .item-info {
-            color: #777;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
+            color: #999;
+            white-space: nowrap;
         }
 
-        .folder-path {
-            color: var(--primary-color);
-            font-size: 0.75rem;
-            text-decoration: underline;
-            cursor: pointer;
-            margin-bottom: 5px;
+        .status-message {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
         }
 
-        .delete-button {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 22px;
-            height: 22px;
-            background-color: var(--danger-color);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s;
+        .status-message.info {
+            background-color: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
         }
 
-        .item-card:hover .delete-button {
-            opacity: 1;
+        .status-message.success {
+            background-color: #e8f5e9;
+            color: #388e3c;
+            border: 1px solid #c8e6c9;
         }
 
-        .delete-button svg {
-            width: 12px;
-            height: 12px;
+        .status-message.error {
+            background-color: #ffebee;
+            color: #d32f2f;
+            border: 1px solid #ffcdd2;
         }
 
-        .delete-button:hover {
-            background-color: #d32f2f;
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #999;
         }
 
         .login-container {
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: calc(100vh - var(--header-height));
-            padding: 20px;
-            text-align: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
         }
 
         .login-card {
-            background-color: white;
+            background: white;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            padding: 30px;
-            width: 100%;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
             max-width: 400px;
         }
 
         .login-title {
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-            color: #333;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 1.8rem;
         }
 
         .login-button {
             background-color: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 4px;
             padding: 12px 24px;
-            font-size: 1rem;
+            border-radius: 4px;
             cursor: pointer;
-            width: 100%;
+            font-size: 1rem;
+            margin-top: 20px;
             transition: background-color 0.2s;
         }
 
@@ -349,149 +285,202 @@
         }
 
         .login-message {
-            margin-top: 20px;
+            margin-top: 15px;
             color: #666;
-        }
-
-        .login-card a {
-            color: var(--primary-color);
-            font-weight: 500;
-            text-decoration: none;
-        }
-        .login-card a:hover {
-            text-decoration: underline;
-        }
-
-        .status-message {
-            margin: 15px 0;
-            padding: 10px;
-            border-radius: 4px;
-            display: none;
-            text-align: left;
-        }
-        .status-message.error {
-            color: #e53935;
-            background-color: rgba(229, 57, 53, 0.1);
-        }
-         .status-message.success {
-             color: #2e7d32;
-             background-color: rgba(76, 175, 80, 0.1);
-         }
-        .status-message.info {
-             color: #0067a5;
-             background-color: rgba(0, 134, 214, 0.1);
-        }
-
-        .loading {
-            color: #666;
-            font-style: italic;
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            display: none;
-        }
-
-        .modal-content {
-            background-color: white;
-            border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            padding: 20px;
-            width: 90%;
-            max-width: 400px;
-        }
-
-        .modal-title {
-            font-size: 1.2rem;
-            font-weight: 500;
-            margin-bottom: 15px;
-            color: #333;
-        }
-
-        .modal-message {
-            margin-bottom: 20px;
-            color: #555;
-        }
-
-        .modal-buttons {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        .modal-buttons button {
-            padding: 8px 16px;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
             font-size: 0.9rem;
         }
 
-        .modal-cancel {
-            background-color: #f1f1f1;
-            color: #333;
+        .error-message {
+            color: var(--danger-color);
+            padding: 10px;
+            margin-bottom: 15px;
+            background-color: #ffebee;
+            border: 1px solid #ffcdd2;
+            border-radius: 4px;
         }
 
-        .modal-cancel:hover {
-            background-color: #e1e1e1;
-        }
-
-        .modal-delete {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .modal-delete:hover {
-            background-color: #d32f2f;
-        }
-
-        .search-highlight {
-            background-color: rgba(0, 134, 214, 0.1);
-            border-left: 3px solid var(--primary-color);
-            padding-left: 10px;
-            font-weight: 500;
-        }
-
-        /* Help Button Styles */
         .help-button {
             position: fixed;
             bottom: 20px;
             right: 20px;
             width: 50px;
             height: 50px;
-            background-color: var(--help-button-bg); 
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             cursor: pointer;
-            z-index: 1001;
-            transition: background-color 0.2s;
-        }
-        .help-button:hover {
-            background-color: var(--help-button-hover-bg);
-        }
-        .help-button svg {
-            fill: white;
-            width: 24px;
-            height: 24px;
+            transition: all 0.3s;
+            z-index: 999;
+            padding: 0;
+            border: none;
+            background-color: var(--help-button-bg);
         }
 
+        .help-button:hover {
+            background-color: var(--help-button-hover-bg);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: scale(1.1);
+        }
+
+        .help-button svg {
+            width: 24px;
+            height: 24px;
+            stroke: #333;
+            stroke-width: 2;
+        }
+
+        .program-details {
+            margin-top: 0;
+            display: none;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .program-details::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .program-details::-webkit-scrollbar-track {
+            background-color: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .program-details::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 4px;
+        }
+
+        .program-details::-webkit-scrollbar-thumb:hover {
+            background-color: #999;
+        }
+
+        .program-details.visible {
+            display: block;
+        }
+
+        .program-details h2 {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .versions-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .versions-table-obsolete {
+            margin-top: 25px;
+        }
+
+        .versions-table thead {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .versions-table th {
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .versions-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .versions-table tbody tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .versions-table a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .versions-table a:hover {
+            text-decoration: underline;
+        }
+
+        .versions-table-latest tbody tr {
+            background-color: #d4edda;
+        }
+
+        .versions-table-latest tbody tr td {
+            padding: 12px 15px;
+        }
+
+        .back-button {
+            background-color: #f1f1f1;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            transition: all 0.2s;
+        }
+
+        .back-button:hover {
+            background-color: #e1e1e1;
+            border-color: #999;
+        }
+
+        .unauthorized-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        }
+
+        .unauthorized-card {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .unauthorized-card h2 {
+            color: var(--danger-color);
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .unauthorized-card p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .unauthorized-card button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        .unauthorized-card button:hover {
+            background-color: var(--accent-color);
+        }
     </style>
 </head>
+
 <body>
     <header>
         <div class="logo">
@@ -500,608 +489,459 @@
         </div>
         <div id="user-section" class="user-section">
             <div id="user-info" class="user-info" style="display: none;">
-                <div class="user-avatar" id="user-avatar">U</div>
-                <span id="username">User</span>
+                <div class="user-avatar" id="user-avatar">TU</div>
+                <span id="username">Test User</span>
             </div>
             <div class="action-buttons">
-                <button id="login-header-button" style="display: inline-block;">Login</button>
+                <button id="login-header-button" style="display: none;">Login</button>
                 <button id="logout-button" style="display: none;">Logout</button>
             </div>
         </div>
     </header>
 
     <main class="main-content">
-        <div id="login-view" class="login-container" style="display: flex;">
+        <div id="login-view" class="login-container" style="display: none;">
             <div class="login-card">
                 <h2 class="login-title">Welcome to AEI Download Center</h2>
                 <p>Please sign in to access files.</p>
-                <div id="login-error" class="status-message" style="display: none;"></div>
-                <button id="login-button" class="login-button">Sign In</button>
+                <div id="login-error" class="error-message" style="display: none;"></div>
+                <div id="loading-spinner" class="loading" style="display: none;">Logging in...</div>
+                <button id="login-button" class="login-button">Sign In with Microsoft</button>
                 <p class="login-message">Secure access to support resources.</p>
-                <p class="login-message" style="margin-top: 15px;">
-                    Don't have an account? <a href="mailto:yanir.mimran@munters.com,vadim.baliasny@munters.com,vanessa.moraes@munters.com,harry.wei@munters.com,angel.martinez@munters.com,m.selten@hotraco.com?subject=Access%20Request%20for%20Download%20Content&amp;body=Questions%20for%20the%20person%20who%20likes%20to%20have%20access%20–%0D%0A%0D%0A• Name%3A%0D%0A• Family Name%3A%0D%0A• Company Name%3A%0D%0A• Company email address%3A%0D%0A• Country%3A%0D%0A%0D%0Ain%20case%20all%20the%20required%20information%20is%20not%20filled-%20the%20request%20will%20not%20be%20accepted">Request access</a>
-                </p>
+            </div>
+        </div>
+
+        <div id="unauthorized-view" class="unauthorized-container" style="display: none;">
+            <div class="unauthorized-card">
+                <h2>Access Denied</h2>
+                <p>Your account does not have permission to access this resource. Please contact your administrator if you believe this is an error.</p>
+                <button id="logout-unauthorized-button">Sign Out</button>
             </div>
         </div>
 
         <div id="files-view" style="display: none;">
-            <h1 class="page-title">Files</h1>
-            <div id="breadcrumb-nav" class="breadcrumb-nav"></div>
+            <h1 class="page-title">Programs</h1>
 
-            <div class="controls-container">
-                 <div class="search-box">
-                    <div class="search-container">
-                        <input type="text" class="search-input" placeholder="Search for files and folders..." id="search-input">
-                        <button class="search-button" aria-label="Search">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"></path>
-                            </svg>
-                        </button>
-                    </div>
+            <div class="programs-container">
+                <div id="files-list" class="file-grid">
+                    <!-- Cards will be generated dynamically from programs.json -->
                 </div>
-                <div id="admin-controls" class="admin-controls" style="display: none;">
-                    <button id="create-folder-button">Create Folder</button>
-                    <input type="file" id="file-upload-input" multiple="">
-                    <button id="upload-button">Upload Files</button>
+
+                <div id="program-details" class="program-details">
+                    <h2 id="program-title">Program Versions</h2>
+                    <table class="versions-table versions-table-latest">
+                        <thead>
+                            <tr>
+                                <th>Program</th>
+                                <th>Version</th>
+                                <th>Link</th>
+                                <th>Release Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="versions-tbody-latest">
+                            <!-- Latest version will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                    <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333; font-size: 1.1rem;">Previous</h3>
+                    <table class="versions-table versions-table-obsolete">
+                        <thead>
+                            <tr>
+                                <th>Program</th>
+                                <th>Version</th>
+                                <th>Link</th>
+                                <th>Release Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="versions-tbody-obsolete">
+                            <!-- Obsolete versions will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                    <button class="back-button" id="back-button">← Back to Programs</button>
                 </div>
             </div>
-
-            <div id="file-operation-status" class="status-message" style="display: none;"></div>
-
-            <div id="files-list" class="file-grid"></div>
         </div>
     </main>
 
-    <div id="confirm-modal" class="modal-overlay">
-        <div class="modal-content">
-            <h3 class="modal-title">Confirm Deletion</h3>
-            <p id="confirm-message" class="modal-message">Are you sure you want to delete this item?</p>
-            <div class="modal-buttons">
-                <button id="modal-cancel" class="modal-cancel">Cancel</button>
-                <button id="modal-delete" class="modal-delete">Delete</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Help Button -->
-    <div id="help-button" class="help-button" title="Help" style="display: none;"> 
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path d="M0 0h24v24H0z" fill="none"></path>
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"></path>
+    <button id="help-button" class="help-button" title="Help">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 16v-4M12 8h.01"></path>
         </svg>
-    </div>
-
+    </button>
 
     <script>
-        const msalConfig = {
+        // ============================================
+        // MSAL Configuration - CHANGE THESE VALUES
+        // ============================================
+        const MSAL_CONFIG = {
             auth: {
-                clientId: "fc293719-d81b-4dcc-a387-448b100c7ed0",
-                authority: "https://login.microsoftonline.com/0cbd00a9-612d-41ea-bb93-4087ef95ce42",
-                redirectUri: window.location.origin + window.location.pathname,
-                knownAuthorities: ["login.microsoftonline.com"],
-                postLogoutRedirectUri: window.location.origin + window.location.pathname
+                clientId: "b1438db9-79e6-457a-99fd-66e7ae4fe160",      // Your App Client ID
+                authority: "https://login.microsoftonline.com/81dbb0d4-0d50-4aa5-a35c-04b98c73f3e0", // Your Tenant ID
+                redirectUri: window.location.origin                     // Static Web App URL
             },
-            cache: { cacheLocation: "localStorage", storeAuthStateInCookie: true },
-            system: {
-                loggerOptions: {
-                    logLevel: msal.LogLevel.Warning,
-                    loggerCallback: (level, message, containsPii) => {
-                        if (containsPii) { return; }
-                        switch (level) {
-                            case msal.LogLevel.Error: console.error(message); return;
-                            case msal.LogLevel.Warning: console.warn(message); return;
-                        }
-                    }
-                }
+            cache: {
+                cacheLocation: "sessionStorage",
+                storeAuthStateInCookie: false
             }
         };
-        const loginRequest = { scopes: ["openid", "profile"], prompt: "select_account" };
-        const tokenRequest = { scopes: ["https://storage.azure.com/user_impersonation"], forceRefresh: false };
-        const msalInstance = new msal.PublicClientApplication(msalConfig);
-        const storageAccount = "supprtftpstorge";
-        const containerName = "supportftpfiles";
-        const adminUsernames = ["david.levy@munters.com", "Ben.Waxman@munters.com", "admin@gmail.com"];
-        let currentAccount = null;
-        let currentPath = "";
-        let itemToDelete = null;
-        let isSearchMode = false;
 
-        const fileIcons = {
-            'pdf': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,17V5A2,2 0 0,0 19,3M9.5,11.5C9.5,12.3 8.8,13 8,13H7V15H5.5V9H8C8.8,9 9.5,9.7 9.5,10.5V11.5M14.5,13.5C14.5,14.3 13.8,15 13,15H10.5V9H13C13.8,9 14.5,9.7 14.5,10.5V13.5M18.5,12C18.5,13.9 16.9,15.5 15,15.5H14V14H15C16.1,14 17,13.1 17,12C17,10.9 16.1,10 15,10H14V9H15.5C17.3,9 18.5,10.3 18.5,12M7,11.5H8V10.5H7V11.5M12,13.5H13V10.5H12V13.5Z" /></svg>',
-            'zip': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V16H8V18H10V16H12V18H14V16H16V18H18V20M18,14H6V4H13V9H18V14M10,11H12V10H10V11M10,13H12V12H10V13M10,9H12V8H10V9Z" /></svg>',
-            'rar': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V16H8V18H10V16H12V18H14V16H16V18H18V20M18,14H6V4H13V9H18V14M10,11H12V10H10V11M10,13H12V12H10V13M10,9H12V8H10V9Z" /></svg>',
-            'txt': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M8,13H16V15H8V13M8,17H16V19H8V17M8,9H16V11H8V9Z" /></svg>',
-            'cfg': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M8,13H16V15H8V13M8,17H16V19H8V17M8,9H16V11H8V9Z" /></svg>',
-            'dat': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" /></svg>',
-            'bin': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" /></svg>',
-            'hex': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" /></svg>',
-            'dwl': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" /></svg>',
-            'jed': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" /></svg>',
-            'upd': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" /></svg>',
-            'doc': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M9,13H15V15H9V13M9,17H15V19H9V17Z" /></svg>',
-            'jpg': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13,9H18.5L13,3.5V9M6,2H14L20,8V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V4C4,2.89 4.89,2 6,2M15,18V12H6V18H15M8,14H13V16H8V14Z" /></svg>',
-            'folder': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 4H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V8h14v10z"/></svg>',
-            'software': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20,3H4C2.89,3 2,3.89 2,5V17C2,18.11 2.89,19 4,19H8V21H16V19H20C21.11,19 22,18.11 22,17V5C22,3.89 21.11,3 20,3M20,17H4V5H20V17M13,10.5C13,11.33 12.33,12 11.5,12C10.67,12 10,11.33 10,10.5C10,9.67 10.67,9 11.5,9C12.33,9 13,9.67 13,10.5M16.37,13.5C16.37,12.5 15.56,11.69 14.56,11.69C14.12,11.69 13.73,11.85 13.41,12.12C13.08,11.85 12.7,11.69 12.26,11.69C11.26,11.69 10.44,12.5 10.44,13.5H11.44C11.44,13.05 11.81,12.69 12.26,12.69C12.71,12.69 13.08,13.05 13.08,13.5V15.69H14.08V13.5C14.08,13.05 14.44,12.69 14.89,12.69C15.33,12.69 15.7,13.05 15.7,13.5H16.37M7.91,13.5C7.91,12.5 7.09,11.69 6.09,11.69C5.09,11.69 4.27,12.5 4.27,13.5H5.27C5.27,13.05 5.64,12.69 6.09,12.69C6.54,12.69 6.91,13.05 6.91,13.5H7.91Z"/></svg>',
-            'products': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21,16.5C21,16.88 20.79,17.21 20.47,17.38L12.57,21.82C12.41,21.94 12.21,22 12,22C11.79,22 11.59,21.94 11.43,21.82L3.53,17.38C3.21,17.21 3,16.88 3,16.5V7.5C3,7.12 3.21,6.79 3.53,6.62L11.43,2.18C11.59,2.06 11.79,2 12,2C12.21,2 12.41,2.06 12.57,2.18L20.47,6.62C20.79,6.79 21,7.12 21,7.5V16.5M12,4.15L5,8.09V15.91L12,19.85L19,15.91V8.09L12,4.15Z"/></svg>',
-            'default': '<svg fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" /></svg>'
+        const LOGIN_REQUEST = {
+            scopes: ["openid", "profile", "User.Read"]
         };
-        const deleteIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
 
-        function getFileIcon(filename) {
-            const extension = filename.split('.').pop().toLowerCase();
-            return fileIcons[extension] || fileIcons['default'];
+        const GRAPH_REQUEST = {
+            scopes: ["https://graph.microsoft.com/.default"]
+        };
+
+        // GROUP ID - Change this to your group's Object ID
+        const ALLOWED_GROUP_ID = "622b603c-f4df-41cd-88fb-ea857d6ddf79";
+
+        // ============================================
+        // Initialize MSAL
+        // ============================================
+        const msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
+
+        let currentAccount = null;
+        let selectedProgramId = null;
+        let programsData = {};
+
+        // DOM Elements
+        const loginView = document.getElementById("login-view");
+        const filesView = document.getElementById("files-view");
+        const unauthorizedView = document.getElementById("unauthorized-view");
+        const loginButton = document.getElementById("login-button");
+        const logoutButton = document.getElementById("logout-button");
+        const logoutUnauthorizedButton = document.getElementById("logout-unauthorized-button");
+        const loginHeaderButton = document.getElementById("login-header-button");
+        const userInfo = document.getElementById("user-info");
+        const usernameSpan = document.getElementById("username");
+        const userAvatar = document.getElementById("user-avatar");
+        const loginError = document.getElementById("login-error");
+        const loadingSpinner = document.getElementById("loading-spinner");
+
+        // ============================================
+        // Initialize & Check Authentication
+        // ============================================
+        msalInstance.initialize().then(() => {
+            handleRedirect();
+            checkAuthStatus();
+        }).catch(error => {
+            console.error("MSAL initialization error:", error);
+            showLoginView();
+        });
+
+        function handleRedirect() {
+            msalInstance.handleRedirectPromise().then(response => {
+                if (response) {
+                    currentAccount = response.account;
+                    msalInstance.setActiveAccount(currentAccount);
+                    checkGroupMembership();
+                }
+            }).catch(error => {
+                console.error("Redirect error:", error);
+            });
         }
 
-        async function getToken() {
-            if (!currentAccount) {
-                const accounts = msalInstance.getAllAccounts();
-                if (accounts.length > 0) {
-                    currentAccount = accounts[0];
-                    msalInstance.setActiveAccount(currentAccount);
-                } else { throw new Error("User is not logged in."); }
+        function checkAuthStatus() {
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts.length > 0) {
+                currentAccount = accounts[0];
+                msalInstance.setActiveAccount(currentAccount);
+                checkGroupMembership();
+            } else {
+                showLoginView();
             }
-            tokenRequest.account = currentAccount;
+        }
+
+        // ============================================
+        // View Management
+        // ============================================
+        function showLoginView() {
+            loginView.style.display = "flex";
+            filesView.style.display = "none";
+            unauthorizedView.style.display = "none";
+            userInfo.style.display = "none";
+            loginHeaderButton.style.display = "inline-block";
+            logoutButton.style.display = "none";
+        }
+
+        function showFilesView() {
+            loginView.style.display = "none";
+            filesView.style.display = "block";
+            unauthorizedView.style.display = "none";
+            userInfo.style.display = "flex";
+            loginHeaderButton.style.display = "none";
+            logoutButton.style.display = "inline-block";
+            updateUserUI();
+            loadPrograms();
+        }
+
+        function showUnauthorizedView() {
+            loginView.style.display = "none";
+            filesView.style.display = "none";
+            unauthorizedView.style.display = "flex";
+            userInfo.style.display = "flex";
+            loginHeaderButton.style.display = "none";
+            logoutButton.style.display = "none";
+            updateUserUI();
+        }
+
+        function updateUserUI() {
+            if (currentAccount) {
+                usernameSpan.textContent = currentAccount.name || currentAccount.username;
+                const initials = (currentAccount.name || currentAccount.username)
+                    .split(' ')
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase();
+                userAvatar.textContent = initials;
+            }
+        }
+
+        // ============================================
+        // Authentication & Authorization
+        // ============================================
+        async function checkGroupMembership() {
             try {
-                const response = await msalInstance.acquireTokenSilent(tokenRequest);
+                showLoginView();
+                loadingSpinner.style.display = "block";
+                loginError.style.display = "none";
+
+                const token = await acquireToken();
+                const isInGroup = await getUserGroupMembership(token);
+
+                loadingSpinner.style.display = "none";
+
+                if (isInGroup) {
+                    showFilesView();
+                } else {
+                    showUnauthorizedView();
+                }
+            } catch (error) {
+                console.error("Error checking group membership:", error);
+                loadingSpinner.style.display = "none";
+                loginError.textContent = `Error: ${error.message}`;
+                loginError.style.display = "block";
+                showLoginView();
+            }
+        }
+
+        async function acquireToken() {
+            try {
+                const response = await msalInstance.acquireTokenSilent({
+                    ...GRAPH_REQUEST,
+                    account: currentAccount
+                });
                 return response.accessToken;
             } catch (error) {
-                if (error instanceof msal.InteractionRequiredAuthError) {
-                    try {
-                        const response = await msalInstance.acquireTokenPopup(tokenRequest);
-                        return response.accessToken;
-                    } catch (popupError) { logout(); throw popupError; }
-                } else { logout(); throw error; }
+                console.log("Silent token acquisition failed, trying popup...");
+                const response = await msalInstance.acquireTokenPopup(GRAPH_REQUEST);
+                return response.accessToken;
             }
         }
 
-        async function login() {
-            clearStatusMessage('login-error');
-            try { await msalInstance.loginRedirect(loginRequest); }
-            catch (error) { showStatusMessage(`Login error: ${error.message || error}`, 'error', 'login-error'); }
-        }
-
-        async function logout() {
-            try { await msalInstance.logoutRedirect({ account: currentAccount || null }); }
-            catch (error) { handleLogoutSuccess(); }
-        }
-
-        function handleLoginSuccess(account) {
-            currentAccount = account;
-            msalInstance.setActiveAccount(currentAccount);
-            updateUIForLogin(account);
-            currentPath = "";
-            loadFiles(currentPath);
-        }
-
-        function handleLogoutSuccess() {
-            currentAccount = null; msalInstance.setActiveAccount(null); currentPath = "";
-            updateUIForLogout();
-            clearStatusMessage('file-operation-status');
-            document.getElementById('files-list').innerHTML = '';
-            document.getElementById('breadcrumb-nav').innerHTML = '';
-        }
-
-        function updateUIForLogin(account) {
-            document.getElementById("login-view").style.display = "none";
-            document.getElementById("files-view").style.display = "block";
-            document.getElementById("user-info").style.display = "flex";
-            document.getElementById("login-header-button").style.display = "none";
-            document.getElementById("logout-button").style.display = "inline-block";
-            document.getElementById("username").textContent = account.name || account.username;
-            const initials = account.name ? account.name.split(' ').map(n => n[0]).join('').substring(0, 2) : account.username.charAt(0);
-            document.getElementById("user-avatar").textContent = initials.toUpperCase();
-            document.getElementById("admin-controls").style.display = isAdmin(account) ? "flex" : "none";
-            document.getElementById("help-button").style.display = "flex"; 
-        }
-
-        function updateUIForLogout() {
-            document.getElementById("login-view").style.display = "flex";
-            document.getElementById("files-view").style.display = "none";
-            document.getElementById("user-info").style.display = "none";
-            document.getElementById("login-header-button").style.display = "inline-block";
-            document.getElementById("logout-button").style.display = "none";
-            document.getElementById("admin-controls").style.display = "none";
-            clearStatusMessage('login-error');
-            document.getElementById("help-button").style.display = "none";
-        }
-
-        function isAdmin(account) {
-            if (!account || !account.username) return false;
-            return adminUsernames.some(admin => admin.toLowerCase() === account.username.toLowerCase());
-        }
-        
-        function getParentPath(currentFullPath) {
-            if (!currentFullPath) return ""; 
-            let path = currentFullPath.replace(/\/$/, ''); 
-            const lastSlashIndex = path.lastIndexOf('/');
-            if (lastSlashIndex === -1) return ""; 
-            return path.substring(0, lastSlashIndex + 1); 
-        }
-
-        async function loadFiles(path = "") {
-            isSearchMode = false; currentPath = path;
-            const filesList = document.getElementById('files-list');
-            filesList.innerHTML = '<div class="loading">Loading items...</div>';
-            updateBreadcrumbs(path);
-            clearStatusMessage('file-operation-status');
-            document.getElementById('search-input').value = '';
-
+        async function getUserGroupMembership(accessToken) {
             try {
-                const token = await getToken();
-                let listUrl = `https://${storageAccount}.blob.core.windows.net/${containerName}?restype=container&comp=list&delimiter=/`;
-                if (path) listUrl += `&prefix=${encodeURIComponent(path)}`;
-                const response = await fetch(listUrl, { method: 'GET', headers: { "Authorization": `Bearer ${token}`, "x-ms-version": "2020-04-08" } });
-                if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to list items: ${response.statusText}. Details: ${errorText}`); }
-                const xmlText = await response.text();
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                const blobs = Array.from(xmlDoc.getElementsByTagName("Blob"));
-                const prefixes = Array.from(xmlDoc.getElementsByTagName("BlobPrefix"));
-                displayItems(blobs, prefixes, path);
+                const response = await fetch('https://graph.microsoft.com/v1.0/me/memberOf?$select=id', {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Graph API error: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                // Check if user is member of the allowed group
+                const userGroups = data.value.map(item => item.id);
+                return userGroups.includes(ALLOWED_GROUP_ID);
+
             } catch (error) {
-                showStatusMessage(`Error loading items: ${error.message}`, 'error', 'file-operation-status');
-                filesList.innerHTML = `<div class="status-message error" style="display: block; grid-column: 1 / -1;">Error loading items. Please try again later.</div>`;
+                console.error("Error fetching group membership:", error);
+                throw error;
             }
         }
 
-        function displayItems(blobs, prefixes, path) {
+        // ============================================
+        // Login & Logout
+        // ============================================
+        function login() {
+            loginError.style.display = "none";
+            loadingSpinner.style.display = "block";
+
+            msalInstance.loginPopup(LOGIN_REQUEST).then(response => {
+                currentAccount = response.account;
+                msalInstance.setActiveAccount(currentAccount);
+                loadingSpinner.style.display = "none";
+                checkGroupMembership();
+            }).catch(error => {
+                console.error("Login error:", error);
+                loadingSpinner.style.display = "none";
+                loginError.textContent = `Login failed: ${error.errorCode || error.message}`;
+                loginError.style.display = "block";
+            });
+        }
+
+        function logout() {
+            currentAccount = null;
+            msalInstance.logoutPopup({
+                mainWindowRedirectUri: window.location.origin
+            }).catch(error => {
+                console.error("Logout error:", error);
+                showLoginView();
+            });
+        }
+
+        // ============================================
+        // Load Programs from JSON
+        // ============================================
+        async function loadPrograms() {
+            try {
+                const response = await fetch('programs.json');
+                if (!response.ok) {
+                    throw new Error(`Failed to load programs.json: ${response.status}`);
+                }
+                const data = await response.json();
+                programsData = {};
+
+                data.programs.forEach(program => {
+                    programsData[program.id] = program;
+                });
+
+                generateProgramCards();
+            } catch (error) {
+                console.error("Error loading programs:", error);
+                const filesList = document.getElementById('files-list');
+                filesList.innerHTML = `<div class="status-message error">Error loading programs: ${error.message}</div>`;
+            }
+        }
+
+        // ============================================
+        // Generate Program Cards
+        // ============================================
+        function generateProgramCards() {
             const filesList = document.getElementById('files-list');
             filesList.innerHTML = '';
 
-            if (path && !isSearchMode) { 
-                const parentPathValue = getParentPath(path);
-                const upLevelCard = document.createElement('div');
-                upLevelCard.className = 'item-card';
-                upLevelCard.style.order = "-1"; 
+            Object.keys(programsData).forEach(programId => {
+                const program = programsData[programId];
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.setAttribute('data-program-id', programId);
 
-                const iconDiv = document.createElement('div');
-                iconDiv.className = 'folder-icon'; 
-                iconDiv.style.backgroundColor = 'var(--help-button-bg)'; //  <--- שינוי צבע הרקע של האייקון "למעלה"
-                iconDiv.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>';
+                const iconSvg = document.createElement('svg');
+                iconSvg.className = 'item-icon';
+                iconSvg.viewBox = '0 0 24 24';
+                iconSvg.fill = 'currentColor';
+                iconSvg.innerHTML = '<path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>';
+
+                const textContainer = document.createElement('div');
+                textContainer.style.flex = '1';
 
                 const nameDiv = document.createElement('div');
                 nameDiv.className = 'item-name';
-                nameDiv.textContent = '..';
-                nameDiv.title = 'Up one level';
+                nameDiv.textContent = program.name;
 
-                upLevelCard.appendChild(iconDiv);
-                upLevelCard.appendChild(nameDiv);
-                
-                const infoDiv = document.createElement('div'); 
+                const infoDiv = document.createElement('div');
                 infoDiv.className = 'item-info';
-                infoDiv.innerHTML = ' ';
-                upLevelCard.appendChild(infoDiv);
+                infoDiv.textContent = `Latest: ${program.lastVersion}`;
 
-                upLevelCard.addEventListener('click', () => loadFiles(parentPathValue));
-                filesList.appendChild(upLevelCard);
-            }
+                textContainer.appendChild(nameDiv);
+                textContainer.appendChild(infoDiv);
 
-            if (blobs.length === 0 && prefixes.length === 0) {
-                if (filesList.children.length === 0) { 
-                    filesList.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 30px; color: #777;">Folder is empty</div>';
-                }
-                return; 
-            }
+                card.appendChild(iconSvg);
+                card.appendChild(textContainer);
 
-            prefixes.forEach(prefix => {
-                const folderFullPath = prefix.getElementsByTagName("Name")[0].textContent;
-                const simpleName = folderFullPath.replace(/\/$/, '').split('/').pop();
-                filesList.appendChild(createItemCard(simpleName, 'folder', null, null, folderFullPath));
-            });
-            blobs.forEach(blob => {
-                const fullPath = blob.getElementsByTagName("Name")[0].textContent;
-                if (fullPath.endsWith('/.placeholder')) return;
-                const simpleName = fullPath.substring(path.length);
-                if (!simpleName) return;
-                const properties = blob.getElementsByTagName("Properties")[0];
-                const size = properties.getElementsByTagName("Content-Length")[0]?.textContent;
-                const lastModified = properties.getElementsByTagName("Last-Modified")[0]?.textContent;
-                filesList.appendChild(createItemCard(simpleName, 'file', size, lastModified, fullPath));
+                card.addEventListener('click', () => selectProgram(programId));
+
+                filesList.appendChild(card);
             });
         }
 
-        function createItemCard(name, type, size, lastModified, fullPath) {
-            const card = document.createElement('div'); card.className = 'item-card';
-            const iconDiv = document.createElement('div');
-            if (type === 'folder') {
-                iconDiv.className = 'folder-icon';
-                const folderNameLower = name.toLowerCase();
-                if (folderNameLower.includes('software')) iconDiv.innerHTML = fileIcons['software'];
-                else if (folderNameLower.includes('product')) iconDiv.innerHTML = fileIcons['products'];
-                else iconDiv.innerHTML = fileIcons['folder'];
-            } else {
-                iconDiv.className = 'item-icon file-icon'; iconDiv.innerHTML = getFileIcon(name);
-            }
-            const nameDiv = document.createElement('div'); nameDiv.className = 'item-name'; nameDiv.textContent = name; nameDiv.title = name;
-            card.appendChild(iconDiv); card.appendChild(nameDiv);
-            const infoDiv = document.createElement('div'); infoDiv.className = 'item-info';
-            if (type === 'file') {
-                let sizeText = "N/A";
-                if (size) {
-                    const sizeNum = parseInt(size);
-                    if (sizeNum < 1024) sizeText = sizeNum + " B";
-                    else if (sizeNum < 1048576) sizeText = (sizeNum / 1024).toFixed(1) + " KB";
-                    else if (sizeNum < 1073741824) sizeText = (sizeNum / 1048576).toFixed(1) + " MB";
-                    else sizeText = (sizeNum / 1073741824).toFixed(1) + " GB";
-                }
-                let dateText = ""; if (lastModified) { try { dateText = new Date(lastModified).toLocaleDateString(); } catch (e) {} }
-                infoDiv.textContent = `${sizeText}${dateText ? ' • ' + dateText : ''}`;
-            } else { infoDiv.innerHTML = ' '; }
-            card.appendChild(infoDiv);
-            if (isAdmin(currentAccount)) {
-                const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-button'; deleteBtn.innerHTML = deleteIcon;
-                deleteBtn.title = `Delete this ${type}`; deleteBtn.setAttribute('aria-label', `Delete ${name}`);
-                deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); confirmDelete(name, type, fullPath); });
-                card.appendChild(deleteBtn);
-            }
-            if (type === 'folder') card.addEventListener('click', () => loadFiles(fullPath));
-            else card.addEventListener('click', () => downloadFile(fullPath, name));
-            return card;
-        }
-
-        async function downloadFile(fullPath, downloadName) {
-            showStatusMessage("Preparing download...", 'info', 'file-operation-status');
-            try {
-                const freshToken = await getToken();
-                const fileUrl = `https://${storageAccount}.blob.core.windows.net/${containerName}/${encodeURIComponent(fullPath)}`;
-                const response = await fetch(fileUrl, { method: 'GET', headers: { "Authorization": `Bearer ${freshToken}`, "x-ms-version": "2020-04-08" } });
-                if (!response.ok) { throw new Error(`Download failed: ${response.statusText}`); }
-                const blob = await response.blob(); const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = downloadName;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(url);
-                clearStatusMessage('file-operation-status');
-            } catch (error) { showStatusMessage(`Error downloading file '${downloadName}': ${error.message}`, 'error', 'file-operation-status'); }
-        }
-
-        function confirmDelete(name, type, path) {
-            const modal = document.getElementById('confirm-modal');
-            const message = document.getElementById('confirm-message');
-            const modalTitle = modal.querySelector('.modal-title');
-            itemToDelete = { name, type, path };
-            modalTitle.textContent = `Confirm ${type.charAt(0).toUpperCase() + type.slice(1)} Deletion`;
-            message.textContent = `Are you sure you want to delete the ${type} "${name}"?`;
-            if (type === 'folder') message.textContent += " All files and sub-folders within this folder will be permanently deleted.";
-            modal.style.display = 'flex';
-        }
-
-        async function deleteItem(item) {
-            if (!item) return;
-            const { name, type, path } = item;
-            showStatusMessage(`Deleting ${type} "${name}"...`, 'info', 'file-operation-status');
-            try {
-                const token = await getToken();
-                if (type === 'file') await deleteFile(path, token);
-                else if (type === 'folder') await deleteFolder(path, token);
-                showStatusMessage(`${type.charAt(0).toUpperCase() + type.slice(1)} "${name}" deleted successfully.`, 'success', 'file-operation-status');
-                if (isSearchMode) searchFiles(); else loadFiles(currentPath);
-            } catch (error) { showStatusMessage(`Error deleting ${type} "${name}": ${error.message}`, 'error', 'file-operation-status'); }
-        }
-
-        async function deleteFile(fullPath, token) {
-            const deleteUrl = `https://${storageAccount}.blob.core.windows.net/${containerName}/${encodeURIComponent(fullPath)}`;
-            const response = await fetch(deleteUrl, { method: 'DELETE', headers: { "Authorization": `Bearer ${token}`, "x-ms-version": "2020-04-08" } });
-            if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to delete file: ${response.statusText}. Details: ${errorText}`); }
-        }
-
-        async function deleteFolder(folderPath, token) {
-            const listUrl = `https://${storageAccount}.blob.core.windows.net/${containerName}?restype=container&comp=list&prefix=${encodeURIComponent(folderPath)}`;
-            const response = await fetch(listUrl, { method: 'GET', headers: { "Authorization": `Bearer ${token}`, "x-ms-version": "2020-04-08" } });
-            if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to list folder contents: ${response.statusText}. Details: ${errorText}`); }
-            const xmlText = await response.text();
-            const parser = new DOMParser(); const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-            const blobs = Array.from(xmlDoc.getElementsByTagName("Blob"));
-            const deletePromises = blobs.map(blobNode => deleteFile(blobNode.getElementsByTagName("Name")[0].textContent, token));
-            await Promise.all(deletePromises);
-        }
-
-        async function createFolder() {
-            const folderName = prompt("Enter new folder name:");
-            if (!folderName || !folderName.trim()) { showStatusMessage("Folder creation cancelled or empty name provided.", 'info', 'file-operation-status'); return; }
-            if (folderName.includes('/') || folderName.includes('\\') || folderName.startsWith('.')) { showStatusMessage("Invalid folder name.", 'error', 'file-operation-status'); return; }
-            const placeholderFileName = `${currentPath}${folderName.trim()}/.placeholder`;
-            showStatusMessage(`Creating folder "${folderName}"...`, 'info', 'file-operation-status');
-            try {
-                const token = await getToken();
-                const uploadUrl = `https://${storageAccount}.blob.core.windows.net/${containerName}/${encodeURIComponent(placeholderFileName)}`;
-                const response = await fetch(uploadUrl, { method: 'PUT', headers: { "Authorization": `Bearer ${token}`, "x-ms-version": "2020-04-08", "x-ms-blob-type": "BlockBlob", "Content-Length": "0" }, body: "" });
-                if (!response.ok && response.status !== 201) { const errorText = await response.text(); throw new Error(`Failed to create folder: ${response.statusText}. ${errorText}`); }
-                showStatusMessage(`Folder "${folderName}" created.`, 'success', 'file-operation-status');
-                loadFiles(currentPath);
-            } catch (error) { showStatusMessage(`Error creating folder: ${error.message}`, 'error', 'file-operation-status'); }
-        }
-
-        async function handleFileUpload(event) {
-            const files = event.target.files; if (!files || files.length === 0) return;
-            showStatusMessage(`Uploading ${files.length} file(s)...`, 'info', 'file-operation-status');
-            let successCount = 0, failCount = 0;
-            try {
-                const token = await getToken();
-                const uploadPromises = Array.from(files).map(file => {
-                    const uploadPath = `${currentPath}${file.name}`;
-                    const uploadUrl = `https://${storageAccount}.blob.core.windows.net/${containerName}/${encodeURIComponent(uploadPath)}`;
-                    return fetch(uploadUrl, { method: 'PUT', headers: { "Authorization": `Bearer ${token}`, "x-ms-version": "2020-04-08", "x-ms-blob-type": "BlockBlob", "Content-Type": file.type || "application/octet-stream" }, body: file })
-                        .then(response => { if (!response.ok && response.status !== 201) { failCount++; return response.text().then(t => console.error(`Failed ${file.name}: ${t}`)); } else { successCount++; } })
-                        .catch(error => { failCount++; console.error(`Error ${file.name}:`, error); });
-                });
-                await Promise.allSettled(uploadPromises);
-                if (failCount > 0) showStatusMessage(`Upload complete: ${successCount} succeeded, ${failCount} failed.`, 'error', 'file-operation-status');
-                else showStatusMessage(`Successfully uploaded ${successCount} file(s).`, 'success', 'file-operation-status');
-            } catch (error) { showStatusMessage(`Upload operation failed: ${error.message}`, 'error', 'file-operation-status'); }
-            finally { event.target.value = null; loadFiles(currentPath); }
-        }
-
-        async function searchFiles() {
-            const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
-            if (!searchTerm) { loadFiles(currentPath); return; }
-            isSearchMode = true;
-            const filesList = document.getElementById('files-list');
-            filesList.innerHTML = '<div class="loading">Search for items...</div>';
-            try {
-                const token = await getToken();
-                const listUrl = `https://${storageAccount}.blob.core.windows.net/${containerName}?restype=container&comp=list`;
-                const response = await fetch(listUrl, { method: 'GET', headers: { "Authorization": `Bearer ${token}`, "x-ms-version": "2020-04-08" } });
-                if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to search items: ${response.statusText}. Details: ${errorText}`); }
-                const xmlText = await response.text();
-                const parser = new DOMParser(); const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                const allBlobs = Array.from(xmlDoc.getElementsByTagName("Blob"));
-                const foundFiles = []; const matchedFoldersData = {};
-                allBlobs.forEach(blobNode => {
-                    const blobFullPath = blobNode.getElementsByTagName("Name")[0].textContent;
-                    if (blobFullPath.endsWith('/.placeholder')) {
-                        const folderPathOnly = blobFullPath.substring(0, blobFullPath.lastIndexOf('/.placeholder') + 1);
-                        const folderName = folderPathOnly.replace(/\/$/, '').split('/').pop() || '';
-                        if (folderName.toLowerCase().includes(searchTerm) && !matchedFoldersData[folderPathOnly]) {
-                            matchedFoldersData[folderPathOnly] = { type: 'folder', name: folderName, fullPath: folderPathOnly };
-                        } return;
-                    }
-                    const pathSegments = blobFullPath.split('/'); const fileName = pathSegments.pop();
-                    if (fileName && fileName.toLowerCase().includes(searchTerm)) {
-                        const properties = blobNode.getElementsByTagName("Properties")[0];
-                        foundFiles.push({ type: 'file', name: fileName, fullPath: blobFullPath, folderPathForFileDisplay: pathSegments.length > 0 ? pathSegments.join('/') + '/' : "", size: properties.getElementsByTagName("Content-Length")[0]?.textContent, lastModified: properties.getElementsByTagName("Last-Modified")[0]?.textContent });
-                    }
-                    let currentParentPathAccumulator = "";
-                    pathSegments.forEach(segment => {
-                        const currentSegmentFullPath = currentParentPathAccumulator + segment + "/";
-                        if (segment.toLowerCase().includes(searchTerm) && !matchedFoldersData[currentSegmentFullPath]) {
-                            matchedFoldersData[currentSegmentFullPath] = { type: 'folder', name: segment, fullPath: currentSegmentFullPath };
-                        } currentParentPathAccumulator = currentSegmentFullPath;
-                    });
-                });
-                displaySearchResults([...Object.values(matchedFoldersData), ...foundFiles], searchTerm);
-            } catch (error) {
-                showStatusMessage(`Error during search: ${error.message}`, 'error', 'file-operation-status');
-                filesList.innerHTML = `<div class="status-message error" style="display: block; grid-column: 1 / -1;">Search failed. Please try again.</div>`;
-            }
-        }
-
-        function displaySearchResults(results, searchTerm) {
-            const filesList = document.getElementById('files-list'); filesList.innerHTML = '';
-            const breadcrumbNav = document.getElementById('breadcrumb-nav'); breadcrumbNav.innerHTML = '';
-            const rootLink = document.createElement('a'); rootLink.href = '#'; rootLink.textContent = 'Home';
-            rootLink.onclick = (e) => { e.preventDefault(); loadFiles(''); };
-            breadcrumbNav.appendChild(rootLink);
-            if (isSearchMode && currentPath) {
-                 breadcrumbNav.appendChild(document.createTextNode(' > '));
-                 const backToFolderLink = document.createElement('a'); backToFolderLink.href = '#';
-                 const currentFolderName = currentPath.replace(/\/$/,'').split('/').pop() || 'Home';
-                 backToFolderLink.textContent = `Back to ${currentFolderName}`;
-                 backToFolderLink.title = `Go back to folder ${currentPath}`;
-                 backToFolderLink.onclick = (e) => { e.preventDefault(); loadFiles(currentPath); };
-                 breadcrumbNav.appendChild(backToFolderLink);
-            }
-            breadcrumbNav.appendChild(document.createTextNode(' > '));
-            const searchLabel = document.createElement('span'); searchLabel.textContent = `Search results for "${searchTerm}"`; searchLabel.className = 'search-highlight';
-            breadcrumbNav.appendChild(searchLabel);
-            if (results.length === 0) { filesList.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 30px; color: #777;">No items found.</div>'; return; }
-            results.sort((a, b) => {
-                if (a.type === 'folder' && b.type === 'file') return -1; if (a.type === 'file' && b.type === 'folder') return 1;
-                return (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase());
+        // ============================================
+        // Select Program & Display Versions
+        // ============================================
+        function selectProgram(programId) {
+            document.querySelectorAll('.item-card').forEach(card => {
+                card.classList.remove('selected');
             });
-            results.forEach(item => filesList.appendChild(createSearchResultCard(item, searchTerm)));
-        }
-        
-        function createSearchResultCard(item, searchTerm) {
-            const card = document.createElement('div'); card.className = 'item-card';
-            const iconDiv = document.createElement('div');
-            const nameDiv = document.createElement('div'); nameDiv.className = 'item-name'; nameDiv.textContent = item.name; nameDiv.title = item.name;
-            if (item.type === 'folder') {
-                iconDiv.className = 'folder-icon';
-                const folderNameLower = item.name.toLowerCase();
-                if (folderNameLower.includes('software')) iconDiv.innerHTML = fileIcons['software'];
-                else if (folderNameLower.includes('product')) iconDiv.innerHTML = fileIcons['products'];
-                else iconDiv.innerHTML = fileIcons['folder'];
-                card.appendChild(iconDiv); card.appendChild(nameDiv);
-                const infoDiv = document.createElement('div'); infoDiv.className = 'item-info'; infoDiv.innerHTML = ' '; card.appendChild(infoDiv);
-                card.addEventListener('click', () => loadFiles(item.fullPath));
-            } else {
-                iconDiv.className = 'item-icon file-icon'; iconDiv.innerHTML = getFileIcon(item.name);
-                card.appendChild(iconDiv); card.appendChild(nameDiv);
-                if (item.folderPathForFileDisplay) {
-                    const pathDiv = document.createElement('div'); pathDiv.className = 'folder-path';
-                    const displayFolderName = item.folderPathForFileDisplay.replace(/\/$/,'').split('/').pop() || 'Home';
-                    pathDiv.textContent = `In folder: ${displayFolderName}`; pathDiv.title = `Go to folder: ${item.folderPathForFileDisplay}`;
-                    pathDiv.onclick = (e) => { e.stopPropagation(); loadFiles(item.folderPathForFileDisplay); };
-                    card.appendChild(pathDiv);
+
+            const selectedCard = document.querySelector(`[data-program-id="${programId}"]`);
+            if (selectedCard) {
+                selectedCard.classList.add('selected');
+            }
+
+            selectedProgramId = programId;
+
+            const programData = programsData[programId];
+            if (programData) {
+                document.getElementById('program-title').textContent = `${programData.name} - Versions`;
+
+                // Latest version in first table
+                const tbodyLatest = document.getElementById('versions-tbody-latest');
+                tbodyLatest.innerHTML = '';
+
+                if (programData.versions.length > 0) {
+                    const latestVersion = programData.versions[0];
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${latestVersion.program}</td>
+                        <td>${latestVersion.version}</td>
+                        <td><a href="${latestVersion.link}" target="_blank">Download</a></td>
+                        <td><a href="${latestVersion.releaseNote}" target="_blank">View Release Note</a></td>
+                    `;
+                    tbodyLatest.appendChild(row);
                 }
-                const infoDiv = document.createElement('div'); infoDiv.className = 'item-info';
-                let sizeText = "N/A"; if (item.size) { const sizeNum = parseInt(item.size); if (sizeNum < 1024) sizeText = sizeNum + " B"; else if (sizeNum < 1048576) sizeText = (sizeNum / 1024).toFixed(1) + " KB"; else if (sizeNum < 1073741824) sizeText = (sizeNum / 1048576).toFixed(1) + " MB"; else sizeText = (sizeNum / 1073741824).toFixed(1) + " GB"; }
-                let dateText = ""; if (item.lastModified) { try { dateText = new Date(item.lastModified).toLocaleDateString(); } catch (e) {} }
-                infoDiv.textContent = `${sizeText}${dateText ? ' • ' + dateText : ''}`; card.appendChild(infoDiv);
-                card.addEventListener('click', () => downloadFile(item.fullPath, item.name));
-            }
-            if (isAdmin(currentAccount)) {
-                const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-button'; deleteBtn.innerHTML = deleteIcon;
-                deleteBtn.title = `Delete this ${item.type}`; deleteBtn.setAttribute('aria-label', `Delete ${item.name}`);
-                deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); confirmDelete(item.name, item.type, item.fullPath); });
-                card.appendChild(deleteBtn);
-            } return card;
-        }
 
-        function updateBreadcrumbs(path) {
-            const breadcrumbNav = document.getElementById('breadcrumb-nav'); breadcrumbNav.innerHTML = '';
-            const rootLink = document.createElement('a'); rootLink.href = '#'; rootLink.textContent = 'Home';
-            rootLink.onclick = (e) => { e.preventDefault(); loadFiles(''); };
-            breadcrumbNav.appendChild(rootLink);
-            if (path) {
-                const parts = path.replace(/\/$/, '').split('/'); let currentBuiltPath = '';
-                parts.forEach((part, index) => {
-                    if (!part) return; currentBuiltPath += part + '/';
-                    breadcrumbNav.appendChild(document.createTextNode(' > '));
-                    if (index === parts.length - 1) { const span = document.createElement('span'); span.textContent = part; breadcrumbNav.appendChild(span); }
-                    else { const link = document.createElement('a'); link.href = '#'; link.textContent = part; const pathForLink = currentBuiltPath; link.onclick = (e) => { e.preventDefault(); loadFiles(pathForLink); }; breadcrumbNav.appendChild(link); }
-                });
+                // Obsolete versions in second table
+                const tbodyObsolete = document.getElementById('versions-tbody-obsolete');
+                tbodyObsolete.innerHTML = '';
+
+                for (let i = 1; i < programData.versions.length; i++) {
+                    const version = programData.versions[i];
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${version.program}</td>
+                        <td>${version.version}</td>
+                        <td><a href="${version.link}" target="_blank">Download</a></td>
+                        <td><a href="${version.releaseNote}" target="_blank">View Release Note</a></td>
+                    `;
+                    tbodyObsolete.appendChild(row);
+                }
+
+                document.getElementById('program-details').classList.add('visible');
             }
         }
 
-        function showStatusMessage(message, type = 'info', elementId = 'file-operation-status') {
-            const statusEl = document.getElementById(elementId); if (!statusEl) return;
-            statusEl.textContent = message; statusEl.className = `status-message ${type}`; statusEl.style.display = 'block';
-            if (type === 'success' || type === 'info') { setTimeout(() => { if (statusEl.textContent === message) clearStatusMessage(elementId); }, 5000); }
+        function backToPrograms() {
+            document.getElementById('program-details').classList.remove('visible');
+            document.querySelectorAll('.item-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            selectedProgramId = null;
         }
 
-        function clearStatusMessage(elementId = 'file-operation-status') {
-            const statusEl = document.getElementById(elementId); if (!statusEl) return;
-            statusEl.textContent = ''; statusEl.style.display = 'none'; statusEl.className = 'status-message';
+        // ============================================
+        // Event Listeners
+        // ============================================
+        loginButton.addEventListener('click', login);
+        logoutButton.addEventListener('click', logout);
+        logoutUnauthorizedButton.addEventListener('click', logout);
+        loginHeaderButton.addEventListener('click', login);
+
+        document.getElementById('back-button').addEventListener('click', backToPrograms);
+
+        const helpButton = document.getElementById('help-button');
+        if (helpButton) {
+            helpButton.addEventListener('click', () => {
+                window.open('https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588', '_blank');
+            });
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById("login-button")?.addEventListener("click", login);
-            document.getElementById("login-header-button")?.addEventListener("click", login);
-            document.getElementById("logout-button")?.addEventListener("click", logout);
-            
-            const helpButton = document.getElementById('help-button');
-            if(helpButton) {
-                helpButton.addEventListener('click', () => {
-                    alert("Help button clicked! Implement your help functionality here, for example, opening a modal or redirecting to a help page.");
-                });
-            }
-
-            const searchInput = document.getElementById('search-input');
-            const searchButton = document.querySelector('.search-button');
-            if (searchInput && searchButton) {
-                searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); searchFiles(); } });
-                searchButton.addEventListener('click', (e) => { e.preventDefault(); searchFiles(); });
-            }
-            const createFolderBtn = document.getElementById('create-folder-button');
-            const uploadBtn = document.getElementById('upload-button');
-            const fileInput = document.getElementById('file-upload-input');
-            if (createFolderBtn) createFolderBtn.addEventListener('click', createFolder);
-            if (uploadBtn && fileInput) { uploadBtn.addEventListener('click', () => fileInput.click()); fileInput.addEventListener('change', handleFileUpload); }
-            const modalCancel = document.getElementById('modal-cancel');
-            const modalDelete = document.getElementById('modal-delete');
-            const confirmModal = document.getElementById('confirm-modal');
-            if (modalCancel) modalCancel.addEventListener('click', () => { confirmModal.style.display = 'none'; itemToDelete = null; });
-            if (modalDelete) modalDelete.addEventListener('click', () => { confirmModal.style.display = 'none'; if (itemToDelete) { deleteItem(itemToDelete); itemToDelete = null; } });
-            window.addEventListener('click', (e) => { if (e.target === confirmModal) { confirmModal.style.display = 'none'; itemToDelete = null; } });
-        });
-
-        window.onload = async () => {
-            try {
-                const redirectResponse = await msalInstance.handleRedirectPromise();
-                if (redirectResponse) { if (redirectResponse.account) handleLoginSuccess(redirectResponse.account); else handleLogoutSuccess(); }
-                else { const accounts = msalInstance.getAllAccounts(); if (accounts.length > 0) handleLoginSuccess(accounts[0]); else handleLogoutSuccess(); }
-            } catch (error) { showStatusMessage(`Error during redirect handling: ${error.message}`, 'error', 'login-error'); handleLogoutSuccess(); }
-        };
     </script>
+</body>
 
-</body></html>
+</html>
