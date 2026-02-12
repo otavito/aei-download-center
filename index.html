@@ -4,7 +4,7 @@
     <title>Download center</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.js"></script>
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -126,6 +126,10 @@
         // auth-config.json contains: clientId, objectId, tenantId, allowedGroupId
         let AUTH_CONFIG = null;
         let msalInstance = null;
+        let currentAccount = null;
+        let programsData = {};
+        let selectedProgramId = null;
+        let ALLOWED_GROUP_ID = null;
 
         // Use explicit Graph delegated scopes for SPA
         const loginRequest = {
@@ -137,100 +141,64 @@
             scopes: ["User.Read", "GroupMember.Read.All"]
         };
 
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('login-error') || document.getElementById('file-operation-status');
+            if (statusEl) {
+                statusEl.textContent = message;
+                statusEl.className = `status-message ${type}`;
+                statusEl.style.display = 'block';
+            }
+            console.log(`[${type}] ${message}`);
+        }
+
         async function loadAuthConfig() {
             try {
                 const res = await fetch('auth-config.json');
                 if (!res.ok) throw new Error('Failed to fetch auth-config.json');
                 AUTH_CONFIG = await res.json();
 
-                // Ensure MSAL library is loaded (in case script tag didn't load earlier)
                 if (!window.msal) {
-                    // try multiple CDN endpoints and a local fallback
-                    async function loadScriptWithFallback(urls) {
-                        for (const url of urls) {
-                            try {
-                                await new Promise((resolve, reject) => {
-                                    const s = document.createElement('script');
-                                    s.src = url;
-                                    s.async = true;
-                                    s.onload = () => resolve(url);
-                                    s.onerror = (e) => reject(new Error(`Failed to load ${url}`));
-                                    document.head.appendChild(s);
-                                });
-                                console.log('Loaded msal from', url);
-                                return;
-                            } catch (err) {
-                                console.warn(err.message);
-                                // try next
-                            }
-                        }
-                        throw new Error('All msal script loads failed');
-                    }
-
-                    const cdnCandidates = [
-                        'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.js',
-                        'https://unpkg.com/@azure/msal-browser/dist/browser/msal-browser.min.js',
-                        './libs/msal-browser.min.js'
-                    ];
-
-                    try {
-                        await loadScriptWithFallback(cdnCandidates);
-                    } catch (loadErr) {
-                        console.error(loadErr);
-                        showStatusMessage('Failed to load authentication library. Check network or install a local copy at ./libs/msal-browser.min.js', 'error', 'file-operation-status');
-                        throw loadErr;
-                    }
+                    throw new Error('MSAL library not loaded. Check that msal-browser.min.js loaded successfully.');
                 }
 
                 const msalConfig = {
                     auth: {
                         clientId: AUTH_CONFIG.clientId,
                         authority: `https://login.microsoftonline.com/${AUTH_CONFIG.tenantId}`,
-                        redirectUri: window.location.origin + window.location.pathname,
-                        postLogoutRedirectUri: window.location.origin + window.location.pathname
+                        redirectUri: window.location.origin,
+                        postLogoutRedirectUri: window.location.origin
                     },
                     cache: { cacheLocation: 'sessionStorage' }
                 };
 
                 msalInstance = new window.msal.PublicClientApplication(msalConfig);
-                // assign allowed group id from config (fallback kept for safety)
-                ALLOWED_GROUP_ID = AUTH_CONFIG.allowedGroupId || ALLOWED_GROUP_ID;
-            } catch (err) {
-                console.error('Error loading auth-config.json', err);
-                // Fallback: initialize MSAL with embedded defaults so the login UI still works
-                const DEFAULT_CLIENT_ID = 'b1438db9-79e6-457a-99fd-66e7ae4fe160';
-                const DEFAULT_TENANT_ID = '81dbb0d4-0d50-4aa5-a35c-04b98c73f3e0';
-                const DEFAULT_ALLOWED_GROUP_ID = '622b603c-f4df-41cd-88fb-ea857d6ddf79';
-
-                AUTH_CONFIG = {
-                    clientId: DEFAULT_CLIENT_ID,
-                    tenantId: DEFAULT_TENANT_ID,
-                    allowedGroupId: DEFAULT_ALLOWED_GROUP_ID
-                };
-
-                const msalConfig = {
-                    auth: {
-                        clientId: AUTH_CONFIG.clientId,
-                        authority: `https://login.microsoftonline.com/${AUTH_CONFIG.tenantId}`,
-                        redirectUri: window.location.origin + window.location.pathname,
-                        postLogoutRedirectUri: window.location.origin + window.location.pathname
-                    },
-                    cache: { cacheLocation: 'sessionStorage' }
-                };
-
-                msalInstance = new msal.PublicClientApplication(msalConfig);
                 ALLOWED_GROUP_ID = AUTH_CONFIG.allowedGroupId;
-                showStatusMessage('Loaded default authentication config (fallback).', 'info', 'file-operation-status');
+                console.log('MSAL initialized');
+            } catch (err) {
+                console.error('Error in loadAuthConfig:', err);
+                showStatus('Failed to load auth config. Check console.', 'error');
+                throw err;
             }
         }
 
-        // Data for programs and their versions
-        let programsData = {};
-        let currentAccount = null;
-        let selectedProgramId = null;
-
-        // Group ID for allowed users (will be populated from auth-config.json)
-        let ALLOWED_GROUP_ID = null;
+        async function handleRedirectPromise() {
+            try {
+                if (!msalInstance) return;
+                const response = await msalInstance.handleRedirectPromise();
+                if (response) {
+                    currentAccount = response.account;
+                    msalInstance.setActiveAccount(currentAccount);
+                } else {
+                    const accounts = msalInstance.getAllAccounts();
+                    if (accounts.length > 0) {
+                        currentAccount = accounts[0];
+                        msalInstance.setActiveAccount(currentAccount);
+                    }
+                }
+            } catch (err) {
+                console.error('handleRedirectPromise error:', err);
+            }
+        }
 
         // Function to generate program cards dynamically
         function generateProgramCards() {
@@ -242,15 +210,15 @@
                 const card = document.createElement('div');
                 card.className = 'item-card';
                 card.setAttribute('data-program-id', programId);
-                
+
                 const folderIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19 4H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V8h14v10z" />
                 </svg>`;
-                
-                const lastVersion = program.versions && program.versions.length > 0 
-                    ? program.versions[0].version 
+
+                const lastVersion = program.versions && program.versions.length > 0
+                    ? program.versions[0].version
                     : 'N/A';
-                
+
                 card.innerHTML = `
                     <div class="folder-icon">
                         ${folderIcon}
@@ -258,12 +226,12 @@
                     <div class="item-name">${program.name}</div>
                     <div class="item-info">Last version: ${lastVersion}</div>
                 `;
-                
+
                 // Add click listener
                 card.addEventListener('click', () => {
                     selectProgram(programId);
                 });
-                
+
                 filesList.appendChild(card);
             });
         }
@@ -307,11 +275,11 @@
             const programData = programsData[programId];
             if (programData) {
                 document.getElementById('program-title').textContent = `${programData.name} - Versions`;
-                
+
                 // Populate table with latest version
                 const tbodyLatest = document.getElementById('versions-tbody-latest');
                 tbodyLatest.innerHTML = '';
-                
+
                 if (programData.versions.length > 0) {
                     const latestVersion = programData.versions[0];
                     const row = document.createElement('tr');
@@ -327,7 +295,7 @@
                 // Populate table with obsolete versions
                 const tbodyObsolete = document.getElementById('versions-tbody-obsolete');
                 tbodyObsolete.innerHTML = '';
-                
+
                 for (let i = 1; i < programData.versions.length; i++) {
                     const version = programData.versions[i];
                     const row = document.createElement('tr');
@@ -355,19 +323,11 @@
 
         // MSAL Authentication Functions
         async function checkAuth() {
-            try {
-                const accounts = msalInstance.getAllAccounts();
-                if (accounts.length > 0) {
-                    currentAccount = accounts[0];
-                    msalInstance.setActiveAccount(currentAccount);
-                    await checkGroupMembership();
-                } else {
-                    // No account found, show login
-                    updateUIForLogout();
-                }
-            } catch (error) {
-                console.error("Auth check error:", error);
+            if (!currentAccount) {
                 updateUIForLogout();
+            } else {
+                msalInstance.setActiveAccount(currentAccount);
+                await checkGroupMembership();
             }
         }
 
@@ -429,33 +389,17 @@
             }
         }
 
-        async function login() {
-            try {
-                console.log('login() invoked', { msalInstance, AUTH_CONFIG });
-                if (!msalInstance) {
-                    console.error('MSAL instance not initialized');
-                    showStatusMessage('Authentication library not loaded. Check console for details.', 'error', 'login-error');
-                    return;
-                }
-                showStatusMessage('Opening sign-in dialog...', 'info', 'login-error');
-                const response = await msalInstance.loginPopup(loginRequest);
-                currentAccount = response.account;
-                msalInstance.setActiveAccount(currentAccount);
-                await checkGroupMembership();
-            } catch (error) {
-                console.error("Login error:", error);
-                showStatusMessage("Sign in failed. Please try again.", 'error', 'login-error');
+        function login() {
+            if (!msalInstance) {
+                showStatus('MSAL not initialized. Check console.', 'error');
+                return;
             }
+            msalInstance.loginRedirect(loginRequest);
         }
 
-        async function logout() {
-            try {
-                if (currentAccount) {
-                    await msalInstance.logoutRedirect({ account: currentAccount });
-                }
-            } catch (error) {
-                console.error("Logout error:", error);
-                handleLogoutSuccess();
+        function logout() {
+            if (msalInstance) {
+                msalInstance.logoutRedirect();
             }
         }
 
@@ -513,71 +457,59 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
-            // Load auth configuration and then check for auth on page load
             try {
+                showStatus('Loading authentication...');
                 await loadAuthConfig();
-            } catch (err) {
-                // config load failed; stop further auth attempts
-                return;
-            }
-            await checkAuth();
+                await handleRedirectPromise();
+                await checkAuth();
 
-            // Back button listener
-            const backButton = document.getElementById('back-button');
-            if (backButton) {
-                backButton.addEventListener('click', backToPrograms);
-            }
+                // Bind event listeners
+                const loginBtn = document.getElementById('login-button');
+                const loginHeaderBtn = document.getElementById('login-header-button');
+                const logoutBtn = document.getElementById('logout-button');
+                const backBtn = document.getElementById('back-button');
+                const helpBtn = document.getElementById('help-button');
 
-            // Login button in header
-            const loginHeaderButton = document.getElementById('login-header-button');
-            if (loginHeaderButton) {
-                loginHeaderButton.addEventListener('click', login);
-            }
+                if (loginBtn) loginBtn.addEventListener('click', login);
+                if (loginHeaderBtn) loginHeaderBtn.addEventListener('click', login);
+                if (logoutBtn) logoutBtn.addEventListener('click', logout);
+                if (backBtn) backBtn.addEventListener('click', backToPrograms);
 
-            // Logout button
-            document.getElementById("logout-button")?.addEventListener("click", logout);
-
-            // Login button in card
-            const loginButton = document.getElementById('login-button');
-            if (loginButton) {
-                loginButton.addEventListener('click', login);
-            }
-
-            // Help button
-            const helpButton = document.getElementById('help-button');
-            if (helpButton) {
-                console.log('Help button found, adding click listener');
-                helpButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Help button clicked!');
-                    window.open('https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588', '_blank');
-                });
-            } else {
-                console.error('Help button NOT found!');
-            }
-
-            const searchInput = document.getElementById('search-input');
-            const searchButton = document.querySelector('.search-button');
-            if (searchInput && searchButton) {
-                searchInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
+                if (helpBtn) {
+                    helpBtn.addEventListener('click', (e) => {
                         e.preventDefault();
-                        showStatusMessage("Search not yet implemented", 'info', 'file-operation-status');
-                    }
-                });
-                searchButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    showStatusMessage("Search not yet implemented", 'info', 'file-operation-status');
-                });
-            }
+                        window.open('https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588', '_blank');
+                    });
+                }
 
-            const modalCancel = document.getElementById('modal-cancel');
-            const modalDelete = document.getElementById('modal-delete');
-            const confirmModal = document.getElementById('confirm-modal');
-            if (modalCancel) modalCancel.addEventListener('click', () => {
-                confirmModal.style.display = 'none';
-            });
+                const searchInput = document.getElementById('search-input');
+                const searchButton = document.querySelector('.search-button');
+                if (searchInput && searchButton) {
+                    searchInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            showStatus('Search not yet implemented', 'info');
+                        }
+                    });
+                    searchButton.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        showStatus('Search not yet implemented', 'info');
+                    });
+                }
+
+                const modalCancel = document.getElementById('modal-cancel');
+                const confirmModal = document.getElementById('confirm-modal');
+                if (modalCancel) {
+                    modalCancel.addEventListener('click', () => {
+                        confirmModal.style.display = 'none';
+                    });
+                }
+
+                showStatus('Ready.');
+            } catch (error) {
+                console.error(error);
+                showStatus('Initialization failed. Check console.', 'error');
+            }
         });
     </script>
 
