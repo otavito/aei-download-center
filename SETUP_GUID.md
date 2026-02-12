@@ -57,7 +57,7 @@ git push
 O **Static Web App automaticamente atualiza** quando você faz push.
 
 ### **4. Testar em Produção**
-- Acesse: `https://zealous-water-080979d1e.2.azurestaticapps.net/`
+- Acesse: `https://zealous-wgit pushater-080979d1e.2.azurestaticapps.net/`
 - Será redirecionado para login Microsoft
 - Apenas usuários no grupo terão acesso
 - Usuários fora do grupo verão "Access Denied"
