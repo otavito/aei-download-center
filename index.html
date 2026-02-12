@@ -20,7 +20,7 @@
                 <span id="username">User</span>
             </div>
             <div class="action-buttons">
-                <button id="login-header-button" style="display: none;">Login</button>
+                <button id="login-header-button" style="display: none;" onclick="login()">Login</button>
                 <button id="logout-button" style="display: none;">Logout</button>
             </div>
         </div>
@@ -32,12 +32,12 @@
                 <h2 class="login-title">Welcome to AEI Download Center</h2>
                 <p>Please sign in to access files.</p>
                 <div id="login-error" class="status-message"></div>
-                <button id="login-button" class="login-button">Sign In with Microsoft</button>
+                <button id="login-button" class="login-button" onclick="login()">Sign In with Microsoft</button>
                 <p class="login-message">Secure access to support resources.</p>
             </div>
         </div>
 
-        <div id="files-view">
+        <div id="files-view" style="display: none;">
             <h1 class="page-title">Programs</h1>
             <div id="breadcrumb-nav" class="breadcrumb-nav"></div>
 
@@ -143,6 +143,45 @@
                 if (!res.ok) throw new Error('Failed to fetch auth-config.json');
                 AUTH_CONFIG = await res.json();
 
+                // Ensure MSAL library is loaded (in case script tag didn't load earlier)
+                if (!window.msal) {
+                    // try multiple CDN endpoints and a local fallback
+                    async function loadScriptWithFallback(urls) {
+                        for (const url of urls) {
+                            try {
+                                await new Promise((resolve, reject) => {
+                                    const s = document.createElement('script');
+                                    s.src = url;
+                                    s.async = true;
+                                    s.onload = () => resolve(url);
+                                    s.onerror = (e) => reject(new Error(`Failed to load ${url}`));
+                                    document.head.appendChild(s);
+                                });
+                                console.log('Loaded msal from', url);
+                                return;
+                            } catch (err) {
+                                console.warn(err.message);
+                                // try next
+                            }
+                        }
+                        throw new Error('All msal script loads failed');
+                    }
+
+                    const cdnCandidates = [
+                        'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.js',
+                        'https://unpkg.com/@azure/msal-browser/dist/browser/msal-browser.min.js',
+                        './libs/msal-browser.min.js'
+                    ];
+
+                    try {
+                        await loadScriptWithFallback(cdnCandidates);
+                    } catch (loadErr) {
+                        console.error(loadErr);
+                        showStatusMessage('Failed to load authentication library. Check network or install a local copy at ./libs/msal-browser.min.js', 'error', 'file-operation-status');
+                        throw loadErr;
+                    }
+                }
+
                 const msalConfig = {
                     auth: {
                         clientId: AUTH_CONFIG.clientId,
@@ -153,7 +192,7 @@
                     cache: { cacheLocation: 'sessionStorage' }
                 };
 
-                msalInstance = new msal.PublicClientApplication(msalConfig);
+                msalInstance = new window.msal.PublicClientApplication(msalConfig);
                 // assign allowed group id from config (fallback kept for safety)
                 ALLOWED_GROUP_ID = AUTH_CONFIG.allowedGroupId || ALLOWED_GROUP_ID;
             } catch (err) {
@@ -392,6 +431,13 @@
 
         async function login() {
             try {
+                console.log('login() invoked', { msalInstance, AUTH_CONFIG });
+                if (!msalInstance) {
+                    console.error('MSAL instance not initialized');
+                    showStatusMessage('Authentication library not loaded. Check console for details.', 'error', 'login-error');
+                    return;
+                }
+                showStatusMessage('Opening sign-in dialog...', 'info', 'login-error');
                 const response = await msalInstance.loginPopup(loginRequest);
                 currentAccount = response.account;
                 msalInstance.setActiveAccount(currentAccount);
