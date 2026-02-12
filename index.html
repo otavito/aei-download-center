@@ -1,5 +1,4 @@
 <html>
-
 <head>
     <title>Download center</title>
     <meta charset="UTF-8">
@@ -20,7 +19,7 @@
                 <span id="username">User</span>
             </div>
             <div class="action-buttons">
-                <button id="login-header-button" style="display: none;" onclick="login()">Login</button>
+                <button id="login-header-button" onclick="login()">Login</button>
                 <button id="logout-button" style="display: none;">Logout</button>
             </div>
         </div>
@@ -122,83 +121,32 @@
     </button>
 
     <script>
-        // Auth config will be loaded from `auth-config.json` to keep secrets/IDs isolated.
-        // auth-config.json contains: clientId, objectId, tenantId, allowedGroupId
-        let AUTH_CONFIG = null;
-        let msalInstance = null;
-        let currentAccount = null;
-        let programsData = {};
-        let selectedProgramId = null;
-        let ALLOWED_GROUP_ID = null;
+        // MSAL Configuration
+        const msalConfig = {
+            auth: {
+                clientId: "b1438db9-79e6-457a-99fd-66e7ae4fe160",
+                authority: "https://login.microsoftonline.com/81dbb0d4-0d50-4aa5-a35c-04b98c73f3e0",
+                redirectUri: window.location.origin
+            },
+            cache: {
+                cacheLocation: "sessionStorage"
+            }
+        };
 
-        // Use explicit Graph delegated scopes for SPA
         const loginRequest = {
             scopes: ["User.Read", "GroupMember.Read.All"]
         };
 
         const tokenRequest = {
-            // Request delegated Graph scopes required to call /me/memberOf
             scopes: ["User.Read", "GroupMember.Read.All"]
         };
 
-        function showStatus(message, type = 'info') {
-            const statusEl = document.getElementById('login-error') || document.getElementById('file-operation-status');
-            if (statusEl) {
-                statusEl.textContent = message;
-                statusEl.className = `status-message ${type}`;
-                statusEl.style.display = 'block';
-            }
-            console.log(`[${type}] ${message}`);
-        }
-
-        async function loadAuthConfig() {
-            try {
-                const res = await fetch('auth-config.json');
-                if (!res.ok) throw new Error('Failed to fetch auth-config.json');
-                AUTH_CONFIG = await res.json();
-
-                if (!window.msal) {
-                    throw new Error('MSAL library not loaded. Check that msal-browser.min.js loaded successfully.');
-                }
-
-                const msalConfig = {
-                    auth: {
-                        clientId: AUTH_CONFIG.clientId,
-                        authority: `https://login.microsoftonline.com/${AUTH_CONFIG.tenantId}`,
-                        redirectUri: window.location.origin,
-                        postLogoutRedirectUri: window.location.origin
-                    },
-                    cache: { cacheLocation: 'sessionStorage' }
-                };
-
-                msalInstance = new window.msal.PublicClientApplication(msalConfig);
-                ALLOWED_GROUP_ID = AUTH_CONFIG.allowedGroupId;
-                console.log('MSAL initialized');
-            } catch (err) {
-                console.error('Error in loadAuthConfig:', err);
-                showStatus('Failed to load auth config. Check console.', 'error');
-                throw err;
-            }
-        }
-
-        async function handleRedirectPromise() {
-            try {
-                if (!msalInstance) return;
-                const response = await msalInstance.handleRedirectPromise();
-                if (response) {
-                    currentAccount = response.account;
-                    msalInstance.setActiveAccount(currentAccount);
-                } else {
-                    const accounts = msalInstance.getAllAccounts();
-                    if (accounts.length > 0) {
-                        currentAccount = accounts[0];
-                        msalInstance.setActiveAccount(currentAccount);
-                    }
-                }
-            } catch (err) {
-                console.error('handleRedirectPromise error:', err);
-            }
-        }
+        // State variables
+        let msalInstance = new msal.PublicClientApplication(msalConfig);
+        let currentAccount = null;
+        let programsData = {};
+        let selectedProgramId = null;
+        const ALLOWED_GROUP_ID = "622b603c-f4df-41cd-88fb-ea857d6ddf79";
 
         // Function to generate program cards dynamically
         function generateProgramCards() {
@@ -321,13 +269,14 @@
             selectedProgramId = null;
         }
 
-        // MSAL Authentication Functions
         async function checkAuth() {
-            if (!currentAccount) {
-                updateUIForLogout();
-            } else {
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts.length > 0) {
+                currentAccount = accounts[0];
                 msalInstance.setActiveAccount(currentAccount);
                 await checkGroupMembership();
+            } else {
+                updateUI();
             }
         }
 
@@ -343,172 +292,128 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Failed to get group membership: ${response.statusText}`);
+                    throw new Error(`Graph API error: ${response.statusText}`);
                 }
 
                 const data = await response.json();
                 const groups = data.value.map(item => item.id);
 
                 if (groups.includes(ALLOWED_GROUP_ID)) {
-                    // User is in the allowed group
-                    updateUIForLogin(currentAccount);
+                    updateUI();
                     loadProgramsData();
                 } else {
-                    // User not in allowed group
-                    console.log("User not in allowed group");
-                    updateUIForLogout();
-                    showUnauthorized();
+                    document.getElementById('files-list').innerHTML = '<div class="status-message error" style="display: block; padding: 20px; text-align: center;">Access Denied: You do not have permission to access this resource.</div>';
+                    updateUI();
                 }
             } catch (error) {
                 console.error("Group membership check error:", error);
-                updateUIForLogout();
+                updateUI();
             }
         }
 
         async function getToken() {
+            const account = currentAccount || msalInstance.getActiveAccount();
             try {
-                const account = currentAccount || msalInstance.getActiveAccount();
-                const silentRequest = Object.assign({}, tokenRequest, { account });
-                const response = await msalInstance.acquireTokenSilent(silentRequest);
+                const response = await msalInstance.acquireTokenSilent({ ...tokenRequest, account });
                 return response.accessToken;
             } catch (error) {
                 if (error instanceof msal.InteractionRequiredAuthError) {
-                    try {
-                        const account = currentAccount || msalInstance.getActiveAccount();
-                        const popupRequest = Object.assign({}, tokenRequest, { account });
-                        const response = await msalInstance.acquireTokenPopup(popupRequest);
-                        return response.accessToken;
-                    } catch (popupError) {
-                        console.error("Popup error:", popupError);
-                        throw popupError;
-                    }
-                } else {
-                    console.error("Token acquisition error:", error);
-                    throw error;
+                    const response = await msalInstance.acquireTokenPopup({ ...tokenRequest, account });
+                    return response.accessToken;
                 }
+                throw error;
             }
         }
 
         function login() {
-            if (!msalInstance) {
-                showStatus('MSAL not initialized. Check console.', 'error');
-                return;
-            }
-            msalInstance.loginRedirect(loginRequest);
+            msalInstance.loginPopup(loginRequest).then(response => {
+                currentAccount = response.account;
+                msalInstance.setActiveAccount(currentAccount);
+                checkAuth();
+            }).catch(error => {
+                console.error("Login error:", error);
+            });
         }
 
         function logout() {
-            if (msalInstance) {
-                msalInstance.logoutRedirect();
+            msalInstance.logoutPopup().then(() => {
+                currentAccount = null;
+                msalInstance.setActiveAccount(null);
+                updateUI();
+            }).catch(error => {
+                console.error("Logout error:", error);
+            });
+        }
+
+        function updateUI() {
+            if (currentAccount) {
+                document.getElementById("login-view").style.display = "none";
+                document.getElementById("files-view").style.display = "block";
+                document.getElementById("user-info").style.display = "flex";
+                document.getElementById("login-header-button").style.display = "none";
+                document.getElementById("logout-button").style.display = "inline-block";
+                document.getElementById("username").textContent = currentAccount.name || currentAccount.username;
+                const initials = currentAccount.name ? currentAccount.name.split(' ').map(n => n[0]).join('').substring(0, 2) : currentAccount.username.charAt(0);
+                document.getElementById("user-avatar").textContent = initials.toUpperCase();
+                document.getElementById("help-button").style.display = "flex";
+            } else {
+                document.getElementById("login-view").style.display = "flex";
+                document.getElementById("files-view").style.display = "none";
+                document.getElementById("user-info").style.display = "none";
+                document.getElementById("login-header-button").style.display = "inline-block";
+                document.getElementById("logout-button").style.display = "none";
+                document.getElementById("help-button").style.display = "none";
             }
         }
 
-        function updateUIForLogin(account) {
-            document.getElementById("login-view").style.display = "none";
-            document.getElementById("files-view").style.display = "block";
-            document.getElementById("user-info").style.display = "flex";
-            document.getElementById("login-header-button").style.display = "none";
-            document.getElementById("logout-button").style.display = "inline-block";
-            document.getElementById("username").textContent = account.name || account.username;
-            const initials = account.name ? account.name.split(' ').map(n => n[0]).join('').substring(0, 2) : account.username.charAt(0);
-            document.getElementById("user-avatar").textContent = initials.toUpperCase();
-            document.getElementById("help-button").style.display = "flex";
-        }
+        // Initialize on DOM ready
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check for redirect auth response
+            msalInstance.handleRedirectPromise();
 
-        function updateUIForLogout() {
-            document.getElementById("login-view").style.display = "flex";
-            document.getElementById("files-view").style.display = "none";
-            document.getElementById("user-info").style.display = "none";
-            // Show header login button so user can access Sign In from header
-            const loginHeaderBtn = document.getElementById("login-header-button");
-            if (loginHeaderBtn) loginHeaderBtn.style.display = "inline-block";
-            document.getElementById("logout-button").style.display = "none";
-            document.getElementById("help-button").style.display = "none";
-        }
+            // Check auth status
+            checkAuth();
 
-        function handleLogoutSuccess() {
-            currentAccount = null;
-            msalInstance.setActiveAccount(null);
-            updateUIForLogout();
-            document.getElementById('files-list').innerHTML = '';
-            document.getElementById('breadcrumb-nav').innerHTML = '';
-        }
+            // Bind UI event listeners
+            const loginBtn = document.getElementById('login-button');
+            const loginHeaderBtn = document.getElementById('login-header-button');
+            const logoutBtn = document.getElementById('logout-button');
+            const backBtn = document.getElementById('back-button');
+            const helpBtn = document.getElementById('help-button');
 
-        function showUnauthorized() {
-            const filesList = document.getElementById('files-list');
-            filesList.innerHTML = '<div class="status-message error" style="display: block; padding: 20px; text-align: center;">Access Denied: You do not have permission to access this resource.</div>';
-        }
+            if (loginBtn) loginBtn.addEventListener('click', login);
+            if (loginHeaderBtn) loginHeaderBtn.addEventListener('click', login);
+            if (logoutBtn) logoutBtn.addEventListener('click', logout);
+            if (backBtn) backBtn.addEventListener('click', backToPrograms);
 
-        function showStatusMessage(message, type = 'info', elementId = 'file-operation-status') {
-            const statusEl = document.getElementById(elementId);
-            if (!statusEl) return;
-            statusEl.textContent = message;
-            statusEl.className = `status-message ${type}`;
-            statusEl.style.display = 'block';
-        }
+            if (helpBtn) {
+                helpBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.open('https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588', '_blank');
+                });
+            }
 
-        function clearStatusMessage(elementId = 'file-operation-status') {
-            const statusEl = document.getElementById(elementId);
-            if (!statusEl) return;
-            statusEl.textContent = '';
-            statusEl.style.display = 'none';
-            statusEl.className = 'status-message';
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                showStatus('Loading authentication...');
-                await loadAuthConfig();
-                await handleRedirectPromise();
-                await checkAuth();
-
-                // Bind event listeners
-                const loginBtn = document.getElementById('login-button');
-                const loginHeaderBtn = document.getElementById('login-header-button');
-                const logoutBtn = document.getElementById('logout-button');
-                const backBtn = document.getElementById('back-button');
-                const helpBtn = document.getElementById('help-button');
-
-                if (loginBtn) loginBtn.addEventListener('click', login);
-                if (loginHeaderBtn) loginHeaderBtn.addEventListener('click', login);
-                if (logoutBtn) logoutBtn.addEventListener('click', logout);
-                if (backBtn) backBtn.addEventListener('click', backToPrograms);
-
-                if (helpBtn) {
-                    helpBtn.addEventListener('click', (e) => {
+            const searchInput = document.getElementById('search-input');
+            const searchButton = document.querySelector('.search-button');
+            if (searchInput && searchButton) {
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
                         e.preventDefault();
-                        window.open('https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588', '_blank');
-                    });
-                }
+                        console.log('Search not yet implemented');
+                    }
+                });
+                searchButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('Search not yet implemented');
+                });
+            }
 
-                const searchInput = document.getElementById('search-input');
-                const searchButton = document.querySelector('.search-button');
-                if (searchInput && searchButton) {
-                    searchInput.addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            showStatus('Search not yet implemented', 'info');
-                        }
-                    });
-                    searchButton.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        showStatus('Search not yet implemented', 'info');
-                    });
-                }
-
-                const modalCancel = document.getElementById('modal-cancel');
-                const confirmModal = document.getElementById('confirm-modal');
-                if (modalCancel) {
-                    modalCancel.addEventListener('click', () => {
-                        confirmModal.style.display = 'none';
-                    });
-                }
-
-                showStatus('Ready.');
-            } catch (error) {
-                console.error(error);
-                showStatus('Initialization failed. Check console.', 'error');
+            const modalCancel = document.getElementById('modal-cancel');
+            const confirmModal = document.getElementById('confirm-modal');
+            if (modalCancel) {
+                modalCancel.addEventListener('click', () => {
+                    confirmModal.style.display = 'none';
+                });
             }
         });
     </script>
