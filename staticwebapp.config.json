@@ -1,0 +1,12 @@
+{
+  "responseOverrides": {
+    "routes": [
+      {
+        "route": "/*",
+        "headers": {
+          "Content-Security-Policy": "default-src 'self' https://alcdn.msauth.net; script-src 'self' https://alcdn.msauth.net; connect-src *"
+        }
+      }
+    ]
+  }
+}
