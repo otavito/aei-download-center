@@ -1,4 +1,5 @@
-<html>
+<!DOCTYPE html>
+<html lang="en"></html>
 <head>
     <title>Download center</title>
     <meta charset="UTF-8">
@@ -19,7 +20,7 @@
                 <span id="username">User</span>
             </div>
             <div class="action-buttons">
-                <button id="login-header-button" onclick="login()">Login</button>
+                <button id="login-header-button">Login</button>
                 <button id="logout-button" style="display: none;">Logout</button>
             </div>
         </div>
@@ -31,7 +32,7 @@
                 <h2 class="login-title">Welcome to AEI Download Center</h2>
                 <p>Please sign in to access files.</p>
                 <div id="login-error" class="status-message"></div>
-                <button id="login-button" class="login-button" onclick="login()">Sign In with Microsoft</button>
+                <button id="login-button" class="login-button">Sign In with Microsoft</button>
                 <p class="login-message">Secure access to support resources.</p>
             </div>
         </div>
@@ -121,16 +122,17 @@
     </button>
 
     <script>
-        // MSAL Configuration
+        // MSAL Configuration (redirect flow)
         const msalConfig = {
             auth: {
                 clientId: "b1438db9-79e6-457a-99fd-66e7ae4fe160",
                 authority: "https://login.microsoftonline.com/81dbb0d4-0d50-4aa5-a35c-04b98c73f3e0",
-                redirectUri: window.location.origin
+                redirectUri: window.location.origin + window.location.pathname,
+                postLogoutRedirectUri: window.location.origin + window.location.pathname
             },
             cache: {
                 cacheLocation: "sessionStorage"
-            }
+            },
         };
 
         const loginRequest = {
@@ -141,134 +143,76 @@
             scopes: ["User.Read", "GroupMember.Read.All"]
         };
 
+        const ALLOWED_GROUP_ID = "622b603c-f4df-41cd-88fb-ea857d6ddf79";
+
+        // Initialize MSAL
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+        console.log('MSAL instance initialized:', msalInstance);
+
         // State variables
-        let msalInstance = new msal.PublicClientApplication(msalConfig);
         let currentAccount = null;
         let programsData = {};
         let selectedProgramId = null;
-        const ALLOWED_GROUP_ID = "622b603c-f4df-41cd-88fb-ea857d6ddf79";
 
-        // Function to generate program cards dynamically
-        function generateProgramCards() {
-            const filesList = document.getElementById('files-list');
-            filesList.innerHTML = ''; // Clear any existing cards
+        // DOM Elements
+        const loginBtn = document.getElementById("login-button");
+        const loginHeaderBtn = document.getElementById("login-header-button");
+        const logoutBtn = document.getElementById("logout-button");
+        const helpBtn = document.getElementById("help-button");
+        const backBtn = document.getElementById("back-button");
 
-            Object.keys(programsData).forEach(programId => {
-                const program = programsData[programId];
-                const card = document.createElement('div');
-                card.className = 'item-card';
-                card.setAttribute('data-program-id', programId);
-
-                const folderIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 4H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V8h14v10z" />
-                </svg>`;
-
-                const lastVersion = program.versions && program.versions.length > 0
-                    ? program.versions[0].version
-                    : 'N/A';
-
-                card.innerHTML = `
-                    <div class="folder-icon">
-                        ${folderIcon}
-                    </div>
-                    <div class="item-name">${program.name}</div>
-                    <div class="item-info">Last version: ${lastVersion}</div>
-                `;
-
-                // Add click listener
-                card.addEventListener('click', () => {
-                    selectProgram(programId);
-                });
-
-                filesList.appendChild(card);
+        // Login handler (redirect)
+        loginBtn.onclick = () => {
+            msalInstance.loginRedirect(loginRequest).catch(error => {
+                console.error("Login redirect error:", error);
             });
-        }
+        };
 
-        // Load programs data from JSON file
-        function loadProgramsData() {
-            fetch('programs.json')
-                .then(response => response.json())
-                .then(data => {
-                    // Convert array to object keyed by program id
-                    data.programs.forEach(program => {
-                        programsData[program.id] = {
-                            name: program.name,
-                            versions: program.versions
-                        };
-                    });
-                    // Generate cards after data is loaded
-                    generateProgramCards();
-                })
-                .catch(error => {
-                    console.error('Error loading programs.json:', error);
-                    alert('Error loading programs data. Please make sure programs.json is in the same directory.');
-                });
-        }
-
-        function selectProgram(programId) {
-            // Remove selected from all cards
-            document.querySelectorAll('.item-card').forEach(card => {
-                card.classList.remove('selected');
+        // Login header handler (redirect)
+        loginHeaderBtn.onclick = () => {
+            msalInstance.loginRedirect(loginRequest).catch(error => {
+                console.error("Login redirect error:", error);
             });
+        };
 
-            // Add selected to clicked card
-            const selectedCard = document.querySelector(`[data-program-id="${programId}"]`);
-            if (selectedCard) {
-                selectedCard.classList.add('selected');
-            }
+        // Logout handler (redirect)
+        logoutBtn.onclick = () => {
+            msalInstance.logoutRedirect({ account: currentAccount || null }).catch(error => {
+                console.error("Logout redirect error:", error);
+            });
+        };
 
-            selectedProgramId = programId;
+        // Help button handler
+        helpBtn.onclick = (e) => {
+            e.preventDefault();
+            window.open('https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588', '_blank');
+        };
 
-            // Display program details
-            const programData = programsData[programId];
-            if (programData) {
-                document.getElementById('program-title').textContent = `${programData.name} - Versions`;
+        // Back button handler
+        backBtn.onclick = () => {
+            backToPrograms();
+        };
 
-                // Populate table with latest version
-                const tbodyLatest = document.getElementById('versions-tbody-latest');
-                tbodyLatest.innerHTML = '';
-
-                if (programData.versions.length > 0) {
-                    const latestVersion = programData.versions[0];
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${latestVersion.program}</td>
-                        <td>${latestVersion.version}</td>
-                        <td><a href="${latestVersion.link}" target="_blank">Download</a></td>
-                        <td><a href="${latestVersion.releaseNote}" target="_blank">View Release Note</a></td>
-                    `;
-                    tbodyLatest.appendChild(row);
+        // Token acquisition (silent, fallback to redirect when interaction required)
+        async function getToken() {
+            const account = currentAccount || msalInstance.getActiveAccount();
+            try {
+                const response = await msalInstance.acquireTokenSilent({
+                    ...tokenRequest,
+                    account: account
+                });
+                return response.accessToken;
+            } catch (error) {
+                if (error instanceof msal.InteractionRequiredAuthError) {
+                    // Redirect to interaction flow to acquire token
+                    await msalInstance.acquireTokenRedirect({ ...tokenRequest, account: account });
+                    throw new Error('Redirecting to acquire token');
                 }
-
-                // Populate table with obsolete versions
-                const tbodyObsolete = document.getElementById('versions-tbody-obsolete');
-                tbodyObsolete.innerHTML = '';
-
-                for (let i = 1; i < programData.versions.length; i++) {
-                    const version = programData.versions[i];
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${version.program}</td>
-                        <td>${version.version}</td>
-                        <td><a href="${version.link}" target="_blank">Download</a></td>
-                        <td><a href="${version.releaseNote}" target="_blank">View Release Note</a></td>
-                    `;
-                    tbodyObsolete.appendChild(row);
-                }
-
-                // Show details section
-                document.getElementById('program-details').classList.add('visible');
+                throw error;
             }
         }
 
-        function backToPrograms() {
-            document.getElementById('program-details').classList.remove('visible');
-            document.querySelectorAll('.item-card').forEach(card => {
-                card.classList.remove('selected');
-            });
-            selectedProgramId = null;
-        }
-
+        // Check authentication status
         async function checkAuth() {
             const accounts = msalInstance.getAllAccounts();
             if (accounts.length > 0) {
@@ -280,6 +224,7 @@
             }
         }
 
+        // Check group membership
         async function checkGroupMembership() {
             try {
                 const token = await getToken();
@@ -311,40 +256,7 @@
             }
         }
 
-        async function getToken() {
-            const account = currentAccount || msalInstance.getActiveAccount();
-            try {
-                const response = await msalInstance.acquireTokenSilent({ ...tokenRequest, account });
-                return response.accessToken;
-            } catch (error) {
-                if (error instanceof msal.InteractionRequiredAuthError) {
-                    const response = await msalInstance.acquireTokenPopup({ ...tokenRequest, account });
-                    return response.accessToken;
-                }
-                throw error;
-            }
-        }
-
-        function login() {
-            msalInstance.loginPopup(loginRequest).then(response => {
-                currentAccount = response.account;
-                msalInstance.setActiveAccount(currentAccount);
-                checkAuth();
-            }).catch(error => {
-                console.error("Login error:", error);
-            });
-        }
-
-        function logout() {
-            msalInstance.logoutPopup().then(() => {
-                currentAccount = null;
-                msalInstance.setActiveAccount(null);
-                updateUI();
-            }).catch(error => {
-                console.error("Logout error:", error);
-            });
-        }
-
+        // Update UI based on auth state
         function updateUI() {
             if (currentAccount) {
                 document.getElementById("login-view").style.display = "none";
@@ -366,33 +278,121 @@
             }
         }
 
-        // Initialize on DOM ready
-        document.addEventListener('DOMContentLoaded', () => {
-            // Check for redirect auth response
-            msalInstance.handleRedirectPromise();
-
-            // Check auth status
-            checkAuth();
-
-            // Bind UI event listeners
-            const loginBtn = document.getElementById('login-button');
-            const loginHeaderBtn = document.getElementById('login-header-button');
-            const logoutBtn = document.getElementById('logout-button');
-            const backBtn = document.getElementById('back-button');
-            const helpBtn = document.getElementById('help-button');
-
-            if (loginBtn) loginBtn.addEventListener('click', login);
-            if (loginHeaderBtn) loginHeaderBtn.addEventListener('click', login);
-            if (logoutBtn) logoutBtn.addEventListener('click', logout);
-            if (backBtn) backBtn.addEventListener('click', backToPrograms);
-
-            if (helpBtn) {
-                helpBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    window.open('https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588', '_blank');
+        // Program data loading
+        function loadProgramsData() {
+            fetch('programs.json')
+                .then(response => response.json())
+                .then(data => {
+                    data.programs.forEach(program => {
+                        programsData[program.id] = {
+                            name: program.name,
+                            versions: program.versions
+                        };
+                    });
+                    generateProgramCards();
+                })
+                .catch(error => {
+                    console.error('Error loading programs.json:', error);
+                    alert('Error loading programs data. Please make sure programs.json is in the same directory.');
                 });
+        }
+
+        // Generate program cards
+        function generateProgramCards() {
+            const filesList = document.getElementById('files-list');
+            filesList.innerHTML = '';
+
+            Object.keys(programsData).forEach(programId => {
+                const program = programsData[programId];
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.setAttribute('data-program-id', programId);
+
+                const folderIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 4H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V8h14v10z" />
+                </svg>`;
+
+                const lastVersion = program.versions && program.versions.length > 0
+                    ? program.versions[0].version
+                    : 'N/A';
+
+                card.innerHTML = `
+                    <div class="folder-icon">${folderIcon}</div>
+                    <div class="item-name">${program.name}</div>
+                    <div class="item-info">Last version: ${lastVersion}</div>
+                `;
+
+                card.addEventListener('click', () => {
+                    selectProgram(programId);
+                });
+
+                filesList.appendChild(card);
+            });
+        }
+
+        // Select program
+        function selectProgram(programId) {
+            document.querySelectorAll('.item-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            const selectedCard = document.querySelector(`[data-program-id="${programId}"]`);
+            if (selectedCard) {
+                selectedCard.classList.add('selected');
             }
 
+            selectedProgramId = programId;
+
+            const programData = programsData[programId];
+            if (programData) {
+                document.getElementById('program-title').textContent = `${programData.name} - Versions`;
+
+                const tbodyLatest = document.getElementById('versions-tbody-latest');
+                tbodyLatest.innerHTML = '';
+
+                if (programData.versions.length > 0) {
+                    const latestVersion = programData.versions[0];
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${latestVersion.program}</td>
+                        <td>${latestVersion.version}</td>
+                        <td><a href="${latestVersion.link}" target="_blank">Download</a></td>
+                        <td><a href="${latestVersion.releaseNote}" target="_blank">View Release Note</a></td>
+                    `;
+                    tbodyLatest.appendChild(row);
+                }
+
+                const tbodyObsolete = document.getElementById('versions-tbody-obsolete');
+                tbodyObsolete.innerHTML = '';
+
+                for (let i = 1; i < programData.versions.length; i++) {
+                    const version = programData.versions[i];
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${version.program}</td>
+                        <td>${version.version}</td>
+                        <td><a href="${version.link}" target="_blank">Download</a></td>
+                        <td><a href="${version.releaseNote}" target="_blank">View Release Note</a></td>
+                    `;
+                    tbodyObsolete.appendChild(row);
+                }
+
+                document.getElementById('program-details').classList.add('visible');
+            }
+        }
+
+        // Back to programs
+        function backToPrograms() {
+            document.getElementById('program-details').classList.remove('visible');
+            document.querySelectorAll('.item-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            selectedProgramId = null;
+        }
+
+        // Initialize on DOM ready (bind UI only). Redirect handling occurs on window.onload
+        document.addEventListener('DOMContentLoaded', () => {
+            // Bind UI and controls
             const searchInput = document.getElementById('search-input');
             const searchButton = document.querySelector('.search-button');
             if (searchInput && searchButton) {
@@ -408,14 +408,37 @@
                 });
             }
 
+            // Setup modal
             const modalCancel = document.getElementById('modal-cancel');
             const confirmModal = document.getElementById('confirm-modal');
             if (modalCancel) {
-                modalCancel.addEventListener('click', () => {
-                    confirmModal.style.display = 'none';
-                });
+                modalCancel.addEventListener('click', () => { confirmModal.style.display = 'none'; });
             }
         });
+
+        // Handle redirect responses after navigation
+        window.onload = async () => {
+            try {
+                const redirectResponse = await msalInstance.handleRedirectPromise();
+                if (redirectResponse && redirectResponse.account) {
+                    currentAccount = redirectResponse.account;
+                    msalInstance.setActiveAccount(currentAccount);
+                    await checkGroupMembership();
+                } else {
+                    const accounts = msalInstance.getAllAccounts();
+                    if (accounts.length > 0) {
+                        currentAccount = accounts[0];
+                        msalInstance.setActiveAccount(currentAccount);
+                        await checkGroupMembership();
+                    } else {
+                        updateUI();
+                    }
+                }
+            } catch (error) {
+                console.error('Error during redirect handling:', error);
+                updateUI();
+            }
+        };
     </script>
 
 </body>
