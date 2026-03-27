@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <title>Download Center - Latest Releases</title>
     <meta charset="UTF-8">
@@ -7,6 +8,7 @@
     <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <header>
         <div class="logo">
@@ -39,7 +41,7 @@
                 <h1 class="page-title">Latest Software Releases</h1>
                 <a href="programs.html" class="see-all-versions-button">Explore All Programs →</a>
             </div>
-            
+
             <div class="programs-container">
                 <table class="versions-table">
                     <thead>
@@ -52,7 +54,7 @@
                         </tr>
                     </thead>
                     <tbody id="versions-tbody-latest">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -114,17 +116,27 @@
         // TOKEN ACQUISITION
         async function getToken() {
             const account = msalInstance.getActiveAccount();
-            if (!account) return null;
+            console.log("Active account:", account);
+
+            if (!account) {
+                console.log("No active account");
+                return null;
+            }
+
             try {
                 const response = await msalInstance.acquireTokenSilent({
                     ...loginRequest,
                     account: account
                 });
+
+                console.log("MSAL token response:", response);
+                console.log("Access token exists?", !!response.accessToken);
+                console.log("Access token length:", response.accessToken?.length);
+                console.log("Scopes granted:", response.scopes);
+
                 return response.accessToken;
             } catch (error) {
-                if (error instanceof msal.InteractionRequiredAuthError) {
-                    msalInstance.acquireTokenRedirect(loginRequest);
-                }
+                console.error("acquireTokenSilent error:", error);
                 return null;
             }
         }
@@ -200,4 +212,5 @@
         };
     </script>
 </body>
+
 </html>
