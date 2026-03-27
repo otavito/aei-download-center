@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <title>Download Center - Latest Releases</title>
     <meta charset="UTF-8">
@@ -7,6 +8,7 @@
     <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <header>
         <div class="logo">
@@ -39,7 +41,7 @@
                 <h1 class="page-title">Latest Software Releases</h1>
                 <a href="programs.html" class="see-all-versions-button">Explore All Programs →</a>
             </div>
-            
+
             <div class="programs-container">
                 <div class="latest-versions-table-container">
                     <table class="versions-table">
@@ -53,7 +55,7 @@
                             </tr>
                         </thead>
                         <tbody id="versions-tbody-latest">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -70,8 +72,9 @@
             cache: { cacheLocation: "sessionStorage" }
         };
 
-        const SITE_ID = "munters.sharepoint.com:/sites/aeillc"; 
-        const ROOT_PATH = "Shared Documents/R&D/Software Releases";
+        // Removido "Shared Documents/" do início
+        const ROOT_PATH = "R&D/Software Releases";
+        const SITE_ID = "munters.sharepoint.com:/sites/aeillc";
         const ALLOWED_GROUP_ID = "622b603c-f4df-41cd-88fb-ea857d6ddf79";
 
         const msalInstance = new msal.PublicClientApplication(msalConfig);
@@ -98,49 +101,80 @@
 
             try {
                 const token = await getToken();
-                // 1. Get Programs
-                const resp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${ROOT_PATH}:/children`, {
+
+                // O segredo aqui é usar o path correto sem a biblioteca e codificar os caracteres especiais como o '&'
+                const encodedPath = encodeURIComponent(ROOT_PATH);
+                const url = `https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${encodedPath}:/children`;
+
+                const resp = await fetch(url, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                const data = await resp.json();
-                const programs = data.value.filter(i => i.folder);
 
+                const data = await resp.json();
+
+                // Se houver erro na resposta da API (ex: caminho não encontrado)
+                if (data.error) {
+                    console.error("Graph API Error Details:", data.error);
+                    throw new Error(`SharePoint Error: ${data.error.message} (Path: ${ROOT_PATH})`);
+                }
+
+                // Verifica se 'value' existe antes de usar o filter
+                if (!data.value) {
+                    throw new Error("No data returned from SharePoint. Please check your permissions and ROOT_PATH.");
+                }
+
+                const programs = data.value.filter(i => i.folder);
                 tbody.innerHTML = '';
 
+                if (programs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No program folders found.</td></tr>';
+                    return;
+                }
+
                 for (const prog of programs) {
-                    // 2. Get Latest Version Folder
-                    const vResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${ROOT_PATH}/${prog.name}:/children?$orderby=name desc&$top=1`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    const vData = await vResp.json();
-                    
-                    if (vData.value && vData.value.length > 0) {
-                        const latest = vData.value[0];
-                        let dateStr = "N/A";
+                    try {
+                        // Busca a versão mais recente dentro da pasta do programa
+                        const progPath = encodeURIComponent(`${ROOT_PATH}/${prog.name}`);
+                        const vUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${progPath}:/children?$orderby=name desc&$top=1`;
 
-                        // 3. Read version.txt
-                        const txtResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${ROOT_PATH}/${prog.name}/${latest.name}/version.txt:/content`, {
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
-                        
-                        if (txtResp.ok) {
-                            const txt = await txtResp.text();
-                            const match = txt.match(/Timestamp:\s*(.*)/i);
-                            dateStr = match ? match[1] : "N/A";
+                        const vResp = await fetch(vUrl, { headers: { Authorization: `Bearer ${token}` } });
+                        const vData = await vResp.json();
+
+                        if (vData.value && vData.value.length > 0) {
+                            const latest = vData.value[0];
+                            let dateStr = "N/A";
+
+                            // Tenta ler o arquivo version.txt
+                            const txtPath = encodeURIComponent(`${ROOT_PATH}/${prog.name}/${latest.name}/version.txt`);
+                            const txtResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${txtPath}:/content`, {
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
+
+                            if (txtResp.ok) {
+                                const txt = await txtResp.text();
+                                const match = txt.match(/Timestamp:\s*(.*)/i);
+                                dateStr = match ? match[1].trim() : "N/A";
+                            }
+
+                            tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${prog.name}</strong></td>
+                            <td><span class="badge">${latest.name}</span></td>
+                            <td>${dateStr}</td>
+                            <td><a href="${latest.webUrl}" target="_blank" class="download-link">Open Folder</a></td>
+                            <td><span class="text-muted">Available in folder</span></td>
+                        </tr>`;
                         }
-
-                        tbody.innerHTML += `
-                            <tr>
-                                <td><strong>${prog.name}</strong></td>
-                                <td><span class="badge">${latest.name}</span></td>
-                                <td>${dateStr}</td>
-                                <td><a href="${latest.webUrl}" target="_blank" class="download-link">Open Folder</a></td>
-                                <td><span class="text-muted">Available in folder</span></td>
-                            </tr>`;
+                    } catch (innerError) {
+                        console.warn(`Error loading details for ${prog.name}:`, innerError);
                     }
                 }
             } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="5" style="color:red;">Error: ${e.message}</td></tr>`;
+                console.error("Main Process Error:", e);
+                tbody.innerHTML = `<tr><td colspan="5" style="color:red; text-align:center; padding: 20px;">
+            <strong>Error:</strong> ${e.message}<br>
+            <small>Check the browser console (F12) for more details.</small>
+        </td></tr>`;
             }
         }
 
@@ -157,4 +191,5 @@
         };
     </script>
 </body>
+
 </html>
