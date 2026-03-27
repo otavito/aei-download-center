@@ -97,46 +97,39 @@
 
         async function loadProgramsData() {
             const tbody = document.getElementById('versions-tbody-latest');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Scanning SharePoint directories...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Identifying SharePoint drive...</td></tr>';
 
             try {
                 const token = await getToken();
 
-                // O segredo aqui é usar o path correto sem a biblioteca e codificar os caracteres especiais como o '&'
-                const encodedPath = encodeURIComponent(ROOT_PATH);
-                const url = `https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${encodedPath}:/children`;
-
-                const resp = await fetch(url, {
+                // 1. Buscar o ID do Drive padrão (Documents) para evitar erro de segment 'root:'
+                const driveResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
+                const driveData = await driveResp.json();
 
+                if (driveData.error) {
+                    throw new Error(`Drive Discovery Error: ${driveData.error.message}`);
+                }
+
+                const driveId = driveData.id;
+                // O ROOT_PATH não deve conter "Shared Documents"
+                const cleanPath = "R&D/Software Releases";
+
+                // 2. Buscar Programas usando o ID do Drive
+                const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(cleanPath)}:/children`;
+                const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
                 const data = await resp.json();
 
-                // Se houver erro na resposta da API (ex: caminho não encontrado)
-                if (data.error) {
-                    console.error("Graph API Error Details:", data.error);
-                    throw new Error(`SharePoint Error: ${data.error.message} (Path: ${ROOT_PATH})`);
-                }
+                if (data.error) throw new Error(data.error.message);
 
-                // Verifica se 'value' existe antes de usar o filter
-                if (!data.value) {
-                    throw new Error("No data returned from SharePoint. Please check your permissions and ROOT_PATH.");
-                }
-
-                const programs = data.value.filter(i => i.folder);
+                const programs = (data.value || []).filter(i => i.folder);
                 tbody.innerHTML = '';
-
-                if (programs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No program folders found.</td></tr>';
-                    return;
-                }
 
                 for (const prog of programs) {
                     try {
-                        // Busca a versão mais recente dentro da pasta do programa
-                        const progPath = encodeURIComponent(`${ROOT_PATH}/${prog.name}`);
-                        const vUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${progPath}:/children?$orderby=name desc&$top=1`;
-
+                        // 3. Buscar Versão mais recente
+                        const vUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(cleanPath + '/' + prog.name)}:/children?$orderby=name desc&$top=1`;
                         const vResp = await fetch(vUrl, { headers: { Authorization: `Bearer ${token}` } });
                         const vData = await vResp.json();
 
@@ -144,9 +137,9 @@
                             const latest = vData.value[0];
                             let dateStr = "N/A";
 
-                            // Tenta ler o arquivo version.txt
-                            const txtPath = encodeURIComponent(`${ROOT_PATH}/${prog.name}/${latest.name}/version.txt`);
-                            const txtResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${txtPath}:/content`, {
+                            // 4. Ler version.txt
+                            const txtPath = encodeURIComponent(`${cleanPath}/${prog.name}/${latest.name}/version.txt`);
+                            const txtResp = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${txtPath}:/content`, {
                                 headers: { Authorization: `Bearer ${token}` }
                             });
 
@@ -162,19 +155,13 @@
                             <td><span class="badge">${latest.name}</span></td>
                             <td>${dateStr}</td>
                             <td><a href="${latest.webUrl}" target="_blank" class="download-link">Open Folder</a></td>
-                            <td><span class="text-muted">Available in folder</span></td>
+                            <td><span class="text-muted">Direct Link</span></td>
                         </tr>`;
                         }
-                    } catch (innerError) {
-                        console.warn(`Error loading details for ${prog.name}:`, innerError);
-                    }
+                    } catch (err) { console.warn(err); }
                 }
             } catch (e) {
-                console.error("Main Process Error:", e);
-                tbody.innerHTML = `<tr><td colspan="5" style="color:red; text-align:center; padding: 20px;">
-            <strong>Error:</strong> ${e.message}<br>
-            <small>Check the browser console (F12) for more details.</small>
-        </td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="color:red; text-align:center;">${e.message}</td></tr>`;
             }
         }
 

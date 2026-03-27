@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <title>Download Center - Programs</title>
     <meta charset="UTF-8">
@@ -7,9 +8,12 @@
     <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <header>
-        <div class="logo"><img src="logo.png" alt="Logo"><h1>Download Center</h1></div>
+        <div class="logo"><img src="logo.png" alt="Logo">
+            <h1>Download Center</h1>
+        </div>
         <button id="logout-button" style="display: none;">Logout</button>
     </header>
 
@@ -20,7 +24,7 @@
             </div>
             <h1 class="page-title">Software Catalog</h1>
             <div id="files-list" class="file-grid">
-                </div>
+            </div>
 
             <div id="program-details" class="program-details">
                 <h2 id="program-title">Versions</h2>
@@ -46,21 +50,47 @@
         const msalInstance = new msal.PublicClientApplication(msalConfig);
 
         async function loadCards() {
-            const token = await (await msalInstance.acquireTokenSilent({scopes: ["Files.Read.All"]})).accessToken;
-            const resp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${ROOT_PATH}:/children`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await resp.json();
-            const grid = document.getElementById('files-list');
-            grid.innerHTML = '';
+            try {
+                const token = await getToken();
 
-            data.value.filter(i => i.folder).forEach(prog => {
-                const card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `<h3>${prog.name}</h3><p>Click to see history</p>`;
-                card.onclick = () => showDetails(prog.name, token);
-                grid.appendChild(card);
-            });
+                // Descobre o Drive primeiro
+                const driveResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const driveData = await driveResp.json();
+                const driveId = driveData.id;
+
+                const cleanPath = "R&D/Software Releases";
+                const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(cleanPath)}:/children`;
+
+                const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+                const data = await resp.json();
+
+                const grid = document.getElementById('files-list');
+                grid.innerHTML = '';
+
+                if (!data.value) return;
+
+                data.value.filter(i => i.folder).forEach(prog => {
+                    const card = document.createElement('div');
+                    card.className = 'item-card';
+                    card.innerHTML = `<h3>${prog.name}</h3><p>Click to see all versions</p>`;
+                    // Passa o driveId para a próxima função
+                    card.onclick = () => showDetails(prog.name, token, driveId);
+                    grid.appendChild(card);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function showDetails(name, token, driveId) {
+            const cleanPath = "R&D/Software Releases";
+            const vUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(cleanPath + '/' + name)}:/children?$orderby=name desc`;
+
+            const vResp = await fetch(vUrl, { headers: { Authorization: `Bearer ${token}` } });
+            const vData = await vResp.json();
+            // ... restante da lógica de exibição da tabela ...
         }
 
         async function showDetails(name, token) {
@@ -70,7 +100,7 @@
             const vData = await vResp.json();
             const tbody = document.getElementById('versions-tbody-detail');
             tbody.innerHTML = '';
-            
+
             vData.value.forEach(v => {
                 tbody.innerHTML += `<tr><td>${v.name}</td><td><a href="${v.webUrl}" target="_blank">View Folder</a></td></tr>`;
             });
@@ -89,4 +119,5 @@
         };
     </script>
 </body>
+
 </html>
