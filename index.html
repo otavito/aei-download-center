@@ -62,6 +62,8 @@
         </div>
     </main>
 
+    // ... (mantenha o seu HTML/CSS original) ...
+
     <script>
         const msalConfig = {
             auth: {
@@ -72,35 +74,26 @@
             cache: { cacheLocation: "sessionStorage" }
         };
 
-        // Removido "Shared Documents/" do início
+        // Use o ID fixo que você descobriu anteriormente para evitar erros de resolução
+        const SITE_ID = "munters.sharepoint.com,982f0f48-7eeb-40a6-8fdd-05b784e5a726,45c2fb8f-7d45-c245-abcc-fb8f7d45c245";
         const ROOT_PATH = "R&D/Software Releases";
-        const SITE_ID = "munters.sharepoint.com:/sites/aeillc";
-        const ALLOWED_GROUP_ID = "622b603c-f4df-41cd-88fb-ea857d6ddf79";
 
         const msalInstance = new msal.PublicClientApplication(msalConfig);
-        let currentAccount = null;
-
-        // UI Logic
-        const updateUI = () => {
-            const isLoggedIn = !!msalInstance.getActiveAccount();
-            document.getElementById("login-view").style.display = isLoggedIn ? "none" : "flex";
-            document.getElementById("files-view").style.display = isLoggedIn ? "block" : "none";
-            document.getElementById("logout-button").style.display = isLoggedIn ? "inline-block" : "none";
-            document.getElementById("login-header-button").style.display = isLoggedIn ? "none" : "inline-block";
-        };
 
         async function getToken() {
-            let account = msalInstance.getActiveAccount();
+            // Garante que o MSAL está inicializado antes de pedir o token
+            if (msalInstance.initialize) await msalInstance.initialize();
 
+            let account = msalInstance.getActiveAccount();
             if (!account) {
                 const accounts = msalInstance.getAllAccounts();
                 if (accounts.length > 0) {
                     account = accounts[0];
                     msalInstance.setActiveAccount(account);
-                } else {
-                    throw new Error("No active account found. Please login again.");
                 }
             }
+
+            if (!account) return null;
 
             try {
                 const response = await msalInstance.acquireTokenSilent({
@@ -109,13 +102,14 @@
                 });
                 return response.accessToken;
             } catch (error) {
-                console.warn("Silent token acquisition failed, retrying with redirect...", error);
+                console.warn("Silent token failed", error);
+                // Se falhar silenciosamente, precisamos de interação
                 if (error instanceof msal.InteractionRequiredAuthError) {
-                    await msalInstance.acquireTokenRedirect({
+                    msalInstance.acquireTokenRedirect({
                         scopes: ["Files.Read.All", "Sites.Read.All"]
                     });
                 }
-                throw error;
+                return null;
             }
         }
 
@@ -125,84 +119,84 @@
 
             try {
                 const token = await getToken();
-                if (!token) throw new Error("Authentication failed: Access token is empty.");
+                if (!token) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Please <a href="#" onclick="executeLogin()">Login</a> to see releases.</td></tr>';
+                    return;
+                }
 
-                // 1. Buscar todas as bibliotecas (drives) do site para evitar erro de SPO License
+                // Busca os drives do site
                 const drivesResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drives`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const drivesData = await drivesResp.json();
 
-                if (drivesData.error) throw new Error(`API Error: ${drivesData.error.message}`);
+                if (drivesData.error) throw new Error(drivesData.error.message);
 
-                // 2. Encontrar a biblioteca "Documents" (Shared Documents)
-                const mainDrive = drivesData.value.find(d => d.name === "Documents") || drivesData.value[0];
-                if (!mainDrive) throw new Error("No document library found on this site.");
+                // Seleciona a biblioteca de documentos padrão
+                const drive = drivesData.value.find(d => d.name === "Documents") || drivesData.value[0];
+                const driveId = drive.id;
 
-                const driveId = mainDrive.id;
-                const cleanPath = "R&D/Software Releases";
-
-                // 3. Buscar os Programas
-                const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(cleanPath)}:/children`;
+                // Lista os programas
+                const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(ROOT_PATH)}:/children`;
                 const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
                 const data = await resp.json();
 
-                if (data.error) throw new Error(`Path Error: ${data.error.message}`);
+                if (data.error) throw new Error(data.error.message);
 
                 const programs = (data.value || []).filter(i => i.folder);
                 tbody.innerHTML = '';
 
                 for (const prog of programs) {
-                    try {
-                        // 4. Buscar a versão mais recente
-                        const vUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(cleanPath + '/' + prog.name)}:/children?$orderby=name desc&$top=1`;
-                        const vResp = await fetch(vUrl, { headers: { Authorization: `Bearer ${token}` } });
-                        const vData = await vResp.json();
+                    // Busca a versão mais recente dentro de cada pasta
+                    const vUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(ROOT_PATH + '/' + prog.name)}:/children?$orderby=name desc&$top=1`;
+                    const vResp = await fetch(vUrl, { headers: { Authorization: `Bearer ${token}` } });
+                    const vData = await vResp.json();
 
-                        if (vData.value && vData.value.length > 0) {
-                            const latest = vData.value[0];
-                            let dateStr = "N/A";
+                    if (vData.value && vData.value.length > 0) {
+                        const latest = vData.value[0];
+                        let dateStr = "N/A";
 
-                            // 5. Tentar ler version.txt
-                            const txtPath = encodeURIComponent(`${cleanPath}/${prog.name}/${latest.name}/version.txt`);
-                            const txtResp = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${txtPath}:/content`, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            });
+                        // Tenta ler o version.txt
+                        const txtPath = encodeURIComponent(`${ROOT_PATH}/${prog.name}/${latest.name}/version.txt`);
+                        const txtResp = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${txtPath}:/content`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
 
-                            if (txtResp.ok) {
-                                const txt = await txtResp.text();
-                                const match = txt.match(/Timestamp:\s*(.*)/i);
-                                dateStr = match ? match[1].trim() : "N/A";
-                            }
+                        if (txtResp.ok) {
+                            const txt = await txtResp.text();
+                            dateStr = (txt.match(/Timestamp:\s*(.*)/i) || [null, "N/A"])[1].trim();
+                        }
 
-                            tbody.innerHTML += `
+                        tbody.innerHTML += `
                         <tr>
                             <td><strong>${prog.name}</strong></td>
                             <td><span class="badge">${latest.name}</span></td>
                             <td>${dateStr}</td>
                             <td><a href="${latest.webUrl}" target="_blank" class="download-link">Open Folder</a></td>
-                            <td><span class="text-muted">Direct Access</span></td>
+                            <td>-</td>
                         </tr>`;
-                        }
-                    } catch (err) { console.warn(`Error on ${prog.name}:`, err); }
+                    }
                 }
             } catch (e) {
-                console.error("Critical Failure:", e);
-                tbody.innerHTML = `<tr><td colspan="5" style="color:red; text-align:center; padding:20px;">
-            <strong>Critical Error:</strong> ${e.message}<br>
-            <small>Please ensure you are logged in and have permissions.</small>
-        </td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="color:red; text-align:center;">${e.message}</td></tr>`;
             }
         }
 
-        document.getElementById("login-button").onclick = () => msalInstance.loginRedirect({ scopes: ["Files.Read.All"] });
-        document.getElementById("logout-button").onclick = () => msalInstance.logoutRedirect();
+        const executeLogin = async () => {
+            if (msalInstance.initialize) await msalInstance.initialize();
+            msalInstance.loginRedirect({
+                scopes: ["openid", "profile", "User.Read", "Files.Read.All", "Sites.Read.All"]
+            });
+        };
+
+        document.getElementById("login-button").onclick = executeLogin;
 
         window.onload = async () => {
-            const resp = await msalInstance.handleRedirectPromise();
-            if (resp) msalInstance.setActiveAccount(resp.account);
+            const result = await msalInstance.handleRedirectPromise();
+            if (result) msalInstance.setActiveAccount(result.account);
+
             if (msalInstance.getActiveAccount()) {
-                updateUI();
+                updateUI(); // Função que esconde o login e mostra a tabela
                 loadProgramsData();
             }
         };
