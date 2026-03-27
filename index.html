@@ -1,153 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <title>Download Center - Latest Releases</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+    <script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
     <header>
-        <div class="logo">
-            <img src="logo.png" alt="Logo">
-            <h1>Download Center</h1>
-        </div>
+        <div class="logo"><img src="logo.png" alt="Logo"><h1>Download Center</h1></div>
         <div id="user-section" class="user-section">
             <div id="user-info" class="user-info" style="display: none;">
                 <div class="user-avatar" id="user-avatar">U</div>
                 <span id="username">User</span>
             </div>
-            <div class="action-buttons">
-                <button id="login-header-button">Login</button>
-                <button id="logout-button" style="display: none;">Logout</button>
-            </div>
+            <button id="logout-button" style="display: none;">Logout</button>
         </div>
     </header>
 
     <main class="main-content">
         <div id="login-view" class="login-container">
             <div class="login-card">
-                <h2 class="login-title">Welcome to AEI Download Center</h2>
-                <p>Please sign in to access files.</p>
+                <h2>Welcome to AEI Download Center</h2>
+                <p>Please sign in to access software releases.</p>
                 <button id="login-button" class="login-button">Sign In with Microsoft</button>
             </div>
         </div>
 
-        <div id="files-view" style="display: none;" class="latest-versions-view">
+        <div id="files-view" style="display: none;">
             <div class="page-header-with-button">
                 <h1 class="page-title">Latest Software Releases</h1>
                 <a href="programs.html" class="see-all-versions-button">Explore All Programs →</a>
             </div>
-
-            <div class="programs-container">
-                <div class="latest-versions-table-container">
-                    <table class="versions-table">
-                        <thead>
-                            <tr>
-                                <th>Program</th>
-                                <th>Latest Version</th>
-                                <th>Release Date</th>
-                                <th>Action</th>
-                                <th>Note</th>
-                            </tr>
-                        </thead>
-                        <tbody id="versions-tbody-latest">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <table class="versions-table">
+                <thead>
+                    <tr>
+                        <th>Program</th>
+                        <th>Latest Version</th>
+                        <th>Release Date</th>
+                        <th>Action</th>
+                        <th>Note</th>
+                    </tr>
+                </thead>
+                <tbody id="versions-tbody-latest"></tbody>
+            </table>
         </div>
     </main>
-
-    // ... (mantenha o seu HTML/CSS original) ...
 
     <script>
         const msalConfig = {
             auth: {
                 clientId: "b1438db9-79e6-457a-99fd-66e7ae4fe160",
                 authority: "https://login.microsoftonline.com/81dbb0d4-0d50-4aa5-a35c-04b98c73f3e0",
-                redirectUri: window.location.origin + window.location.pathname
+                redirectUri: window.location.origin + "/" 
             },
             cache: { cacheLocation: "sessionStorage" }
         };
 
-        // Use o ID fixo que você descobriu anteriormente para evitar erros de resolução
         const SITE_ID = "munters.sharepoint.com,982f0f48-7eeb-40a6-8fdd-05b784e5a726,45c2fb8f-7d45-c245-abcc-fb8f7d45c245";
         const ROOT_PATH = "R&D/Software Releases";
-
+        
         const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-        async function getToken() {
-            // Garante que o MSAL está inicializado antes de pedir o token
-            if (msalInstance.initialize) await msalInstance.initialize();
-
-            let account = msalInstance.getActiveAccount();
-            if (!account) {
-                const accounts = msalInstance.getAllAccounts();
-                if (accounts.length > 0) {
-                    account = accounts[0];
-                    msalInstance.setActiveAccount(account);
+        // Centraliza toda a lógica de Auth aqui para evitar conflitos
+        async function initAuth() {
+            try {
+                await msalInstance.initialize(); //
+                
+                // 1. Processa o retorno do redirecionamento (lê o #code=...)
+                const result = await msalInstance.handleRedirectPromise();
+                
+                if (result) {
+                    msalInstance.setActiveAccount(result.account);
+                } else {
+                    const accounts = msalInstance.getAllAccounts();
+                    if (accounts.length > 0) msalInstance.setActiveAccount(accounts[0]);
                 }
+
+                // 2. Decide o que mostrar na tela
+                const account = msalInstance.getActiveAccount();
+                if (account) {
+                    showApp(account);
+                    loadProgramsData();
+                } else {
+                    showLogin();
+                }
+            } catch (error) {
+                console.error("Auth error:", error);
             }
+        }
 
-            if (!account) return null;
+        function showApp(account) {
+            document.getElementById("login-view").style.display = "none";
+            document.getElementById("files-view").style.display = "block";
+            document.getElementById("logout-button").style.display = "block";
+            document.getElementById("user-info").style.display = "flex";
+            document.getElementById("username").textContent = account.name;
+        }
 
+        function showLogin() {
+            document.getElementById("login-view").style.display = "flex";
+            document.getElementById("files-view").style.display = "none";
+            document.getElementById("logout-button").style.display = "none";
+            document.getElementById("user-info").style.display = "none";
+        }
+
+        async function getToken() {
             try {
                 const response = await msalInstance.acquireTokenSilent({
                     scopes: ["Files.Read.All", "Sites.Read.All"],
-                    account: account
+                    account: msalInstance.getActiveAccount()
                 });
                 return response.accessToken;
-            } catch (error) {
-                console.warn("Silent token failed", error);
-                // Se falhar silenciosamente, precisamos de interação
-                if (error instanceof msal.InteractionRequiredAuthError) {
-                    msalInstance.acquireTokenRedirect({
-                        scopes: ["Files.Read.All", "Sites.Read.All"]
-                    });
-                }
+            } catch (e) {
+                console.warn("Silent token failed, login required.", e);
                 return null;
             }
         }
 
         async function loadProgramsData() {
             const tbody = document.getElementById('versions-tbody-latest');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Connecting to SharePoint...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
 
             try {
                 const token = await getToken();
-                if (!token) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Please <a href="#" onclick="executeLogin()">Login</a> to see releases.</td></tr>';
-                    return;
-                }
+                if (!token) return;
 
-                // Busca os drives do site
+                // Busca o Drive
                 const drivesResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drives`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const drivesData = await drivesResp.json();
+                const driveId = (drivesData.value.find(d => d.name === "Documents") || drivesData.value[0]).id;
 
-                if (drivesData.error) throw new Error(drivesData.error.message);
-
-                // Seleciona a biblioteca de documentos padrão
-                const drive = drivesData.value.find(d => d.name === "Documents") || drivesData.value[0];
-                const driveId = drive.id;
-
-                // Lista os programas
+                // Busca Programas
                 const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(ROOT_PATH)}:/children`;
                 const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
                 const data = await resp.json();
 
-                if (data.error) throw new Error(data.error.message);
-
-                const programs = (data.value || []).filter(i => i.folder);
                 tbody.innerHTML = '';
-
-                for (const prog of programs) {
-                    // Busca a versão mais recente dentro de cada pasta
+                for (const prog of (data.value || []).filter(i => i.folder)) {
+                    // Busca última versão
                     const vUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(ROOT_PATH + '/' + prog.name)}:/children?$orderby=name desc&$top=1`;
                     const vResp = await fetch(vUrl, { headers: { Authorization: `Bearer ${token}` } });
                     const vData = await vResp.json();
@@ -156,25 +150,24 @@
                         const latest = vData.value[0];
                         let dateStr = "N/A";
 
-                        // Tenta ler o version.txt
+                        // Tenta ler version.txt
                         const txtPath = encodeURIComponent(`${ROOT_PATH}/${prog.name}/${latest.name}/version.txt`);
                         const txtResp = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${txtPath}:/content`, {
                             headers: { Authorization: `Bearer ${token}` }
                         });
-
                         if (txtResp.ok) {
                             const txt = await txtResp.text();
                             dateStr = (txt.match(/Timestamp:\s*(.*)/i) || [null, "N/A"])[1].trim();
                         }
 
                         tbody.innerHTML += `
-                        <tr>
-                            <td><strong>${prog.name}</strong></td>
-                            <td><span class="badge">${latest.name}</span></td>
-                            <td>${dateStr}</td>
-                            <td><a href="${latest.webUrl}" target="_blank" class="download-link">Open Folder</a></td>
-                            <td>-</td>
-                        </tr>`;
+                            <tr>
+                                <td><strong>${prog.name}</strong></td>
+                                <td><span class="badge">${latest.name}</span></td>
+                                <td>${dateStr}</td>
+                                <td><a href="${latest.webUrl}" target="_blank" class="download-link">Open Folder</a></td>
+                                <td>-</td>
+                            </tr>`;
                     }
                 }
             } catch (e) {
@@ -182,25 +175,16 @@
             }
         }
 
-        const executeLogin = async () => {
-            if (msalInstance.initialize) await msalInstance.initialize();
+        document.getElementById("login-button").onclick = () => {
             msalInstance.loginRedirect({
                 scopes: ["openid", "profile", "User.Read", "Files.Read.All", "Sites.Read.All"]
             });
         };
 
-        document.getElementById("login-button").onclick = executeLogin;
+        document.getElementById("logout-button").onclick = () => msalInstance.logoutRedirect();
 
-        window.onload = async () => {
-            const result = await msalInstance.handleRedirectPromise();
-            if (result) msalInstance.setActiveAccount(result.account);
-
-            if (msalInstance.getActiveAccount()) {
-                updateUI(); // Função que esconde o login e mostra a tabela
-                loadProgramsData();
-            }
-        };
+        // Inicia o processo apenas uma vez
+        initAuth();
     </script>
 </body>
-
 </html>
