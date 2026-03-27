@@ -90,45 +90,71 @@
         };
 
         async function getToken() {
-            const request = { scopes: ["Files.Read.All", "Sites.Read.All"] };
-            const response = await msalInstance.acquireTokenSilent(request);
-            return response.accessToken;
+            let account = msalInstance.getActiveAccount();
+
+            if (!account) {
+                const accounts = msalInstance.getAllAccounts();
+                if (accounts.length > 0) {
+                    account = accounts[0];
+                    msalInstance.setActiveAccount(account);
+                } else {
+                    throw new Error("No active account found. Please login again.");
+                }
+            }
+
+            try {
+                const response = await msalInstance.acquireTokenSilent({
+                    scopes: ["Files.Read.All", "Sites.Read.All"],
+                    account: account
+                });
+                return response.accessToken;
+            } catch (error) {
+                console.warn("Silent token acquisition failed, retrying with redirect...", error);
+                if (error instanceof msal.InteractionRequiredAuthError) {
+                    await msalInstance.acquireTokenRedirect({
+                        scopes: ["Files.Read.All", "Sites.Read.All"]
+                    });
+                }
+                throw error;
+            }
         }
 
         async function loadProgramsData() {
             const tbody = document.getElementById('versions-tbody-latest');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Identifying SharePoint drive...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Connecting to SharePoint...</td></tr>';
 
             try {
                 const token = await getToken();
+                if (!token) throw new Error("Authentication failed: Access token is empty.");
 
-                // 1. Buscar o ID do Drive padrão (Documents) para evitar erro de segment 'root:'
-                const driveResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive`, {
+                // 1. Buscar todas as bibliotecas (drives) do site para evitar erro de SPO License
+                const drivesResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drives`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                const driveData = await driveResp.json();
+                const drivesData = await drivesResp.json();
 
-                if (driveData.error) {
-                    throw new Error(`Drive Discovery Error: ${driveData.error.message}`);
-                }
+                if (drivesData.error) throw new Error(`API Error: ${drivesData.error.message}`);
 
-                const driveId = driveData.id;
-                // O ROOT_PATH não deve conter "Shared Documents"
+                // 2. Encontrar a biblioteca "Documents" (Shared Documents)
+                const mainDrive = drivesData.value.find(d => d.name === "Documents") || drivesData.value[0];
+                if (!mainDrive) throw new Error("No document library found on this site.");
+
+                const driveId = mainDrive.id;
                 const cleanPath = "R&D/Software Releases";
 
-                // 2. Buscar Programas usando o ID do Drive
+                // 3. Buscar os Programas
                 const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(cleanPath)}:/children`;
                 const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
                 const data = await resp.json();
 
-                if (data.error) throw new Error(data.error.message);
+                if (data.error) throw new Error(`Path Error: ${data.error.message}`);
 
                 const programs = (data.value || []).filter(i => i.folder);
                 tbody.innerHTML = '';
 
                 for (const prog of programs) {
                     try {
-                        // 3. Buscar Versão mais recente
+                        // 4. Buscar a versão mais recente
                         const vUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(cleanPath + '/' + prog.name)}:/children?$orderby=name desc&$top=1`;
                         const vResp = await fetch(vUrl, { headers: { Authorization: `Bearer ${token}` } });
                         const vData = await vResp.json();
@@ -137,7 +163,7 @@
                             const latest = vData.value[0];
                             let dateStr = "N/A";
 
-                            // 4. Ler version.txt
+                            // 5. Tentar ler version.txt
                             const txtPath = encodeURIComponent(`${cleanPath}/${prog.name}/${latest.name}/version.txt`);
                             const txtResp = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${txtPath}:/content`, {
                                 headers: { Authorization: `Bearer ${token}` }
@@ -155,13 +181,17 @@
                             <td><span class="badge">${latest.name}</span></td>
                             <td>${dateStr}</td>
                             <td><a href="${latest.webUrl}" target="_blank" class="download-link">Open Folder</a></td>
-                            <td><span class="text-muted">Direct Link</span></td>
+                            <td><span class="text-muted">Direct Access</span></td>
                         </tr>`;
                         }
-                    } catch (err) { console.warn(err); }
+                    } catch (err) { console.warn(`Error on ${prog.name}:`, err); }
                 }
             } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="5" style="color:red; text-align:center;">${e.message}</td></tr>`;
+                console.error("Critical Failure:", e);
+                tbody.innerHTML = `<tr><td colspan="5" style="color:red; text-align:center; padding:20px;">
+            <strong>Critical Error:</strong> ${e.message}<br>
+            <small>Please ensure you are logged in and have permissions.</small>
+        </td></tr>`;
             }
         }
 
