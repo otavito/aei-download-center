@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Download Center - Programs</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="logo"><img src="logo.png" alt="Logo"><h1>Download Center</h1></div>
+        <button id="logout-button" style="display: none;">Logout</button>
+    </header>
+
+    <main class="main-content">
+        <div id="files-view">
+            <div class="page-header-buttons">
+                <a href="index.html" class="see-all-versions-button">← Back to Latest Versions</a>
+            </div>
+            <h1 class="page-title">Software Catalog</h1>
+            <div id="files-list" class="file-grid">
+                </div>
+
+            <div id="program-details" class="program-details">
+                <h2 id="program-title">Versions</h2>
+                <table class="versions-table">
+                    <tbody id="versions-tbody-detail"></tbody>
+                </table>
+                <button onclick="document.getElementById('program-details').classList.remove('visible')">Close</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Use as mesmas configurações do index.html acima
+        const msalConfig = {
+            auth: {
+                clientId: "b1438db9-79e6-457a-99fd-66e7ae4fe160",
+                authority: "https://login.microsoftonline.com/81dbb0d4-0d50-4aa5-a35c-04b98c73f3e0",
+                redirectUri: window.location.origin + window.location.pathname
+            }
+        };
+        const SITE_ID = "munters.sharepoint.com:/sites/aeillc";
+        const ROOT_PATH = "Shared Documents/R&D/Software Releases";
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        async function loadCards() {
+            const token = await (await msalInstance.acquireTokenSilent({scopes: ["Files.Read.All"]})).accessToken;
+            const resp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${ROOT_PATH}:/children`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await resp.json();
+            const grid = document.getElementById('files-list');
+            grid.innerHTML = '';
+
+            data.value.filter(i => i.folder).forEach(prog => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `<h3>${prog.name}</h3><p>Click to see history</p>`;
+                card.onclick = () => showDetails(prog.name, token);
+                grid.appendChild(card);
+            });
+        }
+
+        async function showDetails(name, token) {
+            const vResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${ROOT_PATH}/${name}:/children?$orderby=name desc`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const vData = await vResp.json();
+            const tbody = document.getElementById('versions-tbody-detail');
+            tbody.innerHTML = '';
+            
+            vData.value.forEach(v => {
+                tbody.innerHTML += `<tr><td>${v.name}</td><td><a href="${v.webUrl}" target="_blank">View Folder</a></td></tr>`;
+            });
+            document.getElementById('program-details').classList.add('visible');
+        }
+
+        window.onload = async () => {
+            await msalInstance.handleRedirectPromise();
+            if (msalInstance.getAllAccounts().length > 0) {
+                msalInstance.setActiveAccount(msalInstance.getAllAccounts()[0]);
+                document.getElementById("logout-button").style.display = "block";
+                loadCards();
+            } else {
+                window.location.href = "index.html"; // Redireciona se não logado
+            }
+        };
+    </script>
+</body>
+</html>

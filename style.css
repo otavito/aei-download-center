@@ -99,14 +99,17 @@ header {
     display: flex;
     flex-direction: column;
     padding: 20px;
-    max-width: 1200px;
+    max-width: 100%;
     margin-left: auto;
     margin-right: auto;
+    height: calc(100vh - 60px);
 }
 
 #files-view {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    overflow: hidden;
 }
 
 .programs-container {
@@ -116,10 +119,44 @@ header {
     height: calc(100vh - 140px);
 }
 
+#files-view.latest-versions-view {
+    max-width: 100%;
+    flex: 1;
+    overflow: hidden;
+}
+
+#files-view.latest-versions-view .programs-container {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: unset;
+    gap: 0;
+    height: auto;
+    flex: 1;
+    overflow: hidden;
+}
+
+#files-view.latest-versions-view .latest-versions-table-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    border-radius: 6px;
+    max-height: 65vh;
+}
+
 .page-title {
     font-size: 1.8rem;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     color: #333;
+    margin-top: 0;
+}
+
+.page-header-with-button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 15px;
 }
 
 .breadcrumb-nav {
@@ -538,6 +575,15 @@ header {
     padding: 12px 15px;
 }
 
+.versions-table th:nth-child(1),
+.versions-table th:nth-child(2) {
+    min-width: 80px;
+}
+
+.versions-table th:nth-child(3) {
+    min-width: 140px;
+}
+
 .back-button {
     background-color: #f1f1f1;
     color: #333;
@@ -615,5 +661,106 @@ header {
 }
 
 .login-message a:hover {
+    text-decoration: underline;
+}
+
+.see-all-versions-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.see-all-versions-button:hover {
+    background-color: var(--accent-color);
+    text-decoration: none;
+}
+
+.page-header-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.latest-versions-table-container {
+    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 6px;
+}
+
+.versions-table-latest-only {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    flex: 1;
+    table-layout: fixed;
+}
+
+.versions-table-latest-only thead {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.versions-table-latest-only th {
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--primary-color);
+    font-size: 0.95rem;
+}
+
+.versions-table-latest-only th:nth-child(3) {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.versions-table-latest-only td:nth-child(3) {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.versions-table-latest-only th:nth-child(1),
+.versions-table-latest-only th:nth-child(2) {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.versions-table-latest-only td:nth-child(1),
+.versions-table-latest-only td:nth-child(2) {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.versions-table-latest-only td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.versions-table-latest-only tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+.versions-table-latest-only a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    display: block;
+    padding: 6px 0;
+}
+
+.versions-table-latest-only a:hover {
     text-decoration: underline;
 }
