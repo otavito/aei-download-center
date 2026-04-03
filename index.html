@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <title>Download Center - Latest Releases</title>
+    <title>Download center - Latest versions</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+
+    <script src="msal-browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
     <header>
         <div class="logo">
@@ -31,42 +30,49 @@
         <div id="login-view" class="login-container">
             <div class="login-card">
                 <h2 class="login-title">Welcome to AEI Download Center</h2>
-                <p>Please sign in to access software releases.</p>
+                <p>Please sign in to access the latest software versions.</p>
+                <div id="login-error" class="status-message"></div>
                 <button id="login-button" class="login-button">Sign In with Microsoft</button>
+                <p class="login-message">Secure access to support resources.</p>
             </div>
         </div>
 
         <div id="files-view" style="display: none;">
-            <div class="page-header-with-button">
-                <h1 class="page-title">Latest Software Releases</h1>
-                <a href="programs.html" class="see-all-versions-button">Explore All Programs →</a>
+            <h1 class="page-title">Latest Versions</h1>
+
+            <div class="controls-container">
+                <a href="programs.html" class="back-button" style="display: inline-block; text-decoration: none;">All versions</a>
             </div>
 
-            <div class="programs-container">
-                <table class="versions-table">
-                    <thead>
-                        <tr>
-                            <th>Program</th>
-                            <th>Latest Version</th>
-                            <th>Release Date</th>
-                            <th>Action</th>
-                            <th>Note</th>
-                        </tr>
-                    </thead>
-                    <tbody id="versions-tbody-latest">
-                    </tbody>
-                </table>
-            </div>
+            <div id="file-operation-status" class="status-message"></div>
+
+            <table class="versions-table versions-table-latest">
+                <thead>
+                    <tr>
+                        <th>Program</th>
+                        <th>Version</th>
+                        <th>Link</th>
+                    </tr>
+                </thead>
+                <tbody id="latest-versions-tbody"></tbody>
+            </table>
         </div>
     </main>
 
+    <button id="help-button" class="help-button" title="Help" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M0 0h24v24H0z" fill="none"></path>
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"></path>
+        </svg>
+    </button>
+
     <script>
-        // CONFIGURAÇÃO MSAL V2
         const msalConfig = {
             auth: {
                 clientId: "b1438db9-79e6-457a-99fd-66e7ae4fe160",
                 authority: "https://login.microsoftonline.com/81dbb0d4-0d50-4aa5-a35c-04b98c73f3e0",
-                redirectUri: window.location.origin + window.location.pathname
+                redirectUri: window.location.origin + window.location.pathname,
+                postLogoutRedirectUri: window.location.origin + window.location.pathname
             },
             cache: {
                 cacheLocation: "sessionStorage"
@@ -74,143 +80,160 @@
         };
 
         const loginRequest = {
-            scopes: ["User.Read", "Files.Read.All", "Sites.Read.All"]
+            scopes: ["User.Read", "GroupMember.Read.All"]
         };
 
-        // Identificadores do SharePoint
-        const SITE_ID = "munters.sharepoint.com,982f0f48-7eeb-40a6-8fdd-05b784e5a726,45c2fb8f-7d45-c245-abcc-fb8f7d45c245";
-        const ROOT_PATH = "R&D/Software Releases";
+        const tokenRequest = {
+            scopes: ["User.Read", "GroupMember.Read.All"]
+        };
 
+        const ALLOWED_GROUP_ID = "622b603c-f4df-41cd-88fb-ea857d6ddf79";
         const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-        // FUNÇÕES DE UI
+        let currentAccount = null;
+
+        const loginBtn = document.getElementById("login-button");
+        const loginHeaderBtn = document.getElementById("login-header-button");
+        const logoutBtn = document.getElementById("logout-button");
+        const helpBtn = document.getElementById("help-button");
+
+        loginBtn.onclick = () => {
+            msalInstance.loginRedirect(loginRequest).catch(error => console.error("Login redirect error:", error));
+        };
+
+        loginHeaderBtn.onclick = () => {
+            msalInstance.loginRedirect(loginRequest).catch(error => console.error("Login redirect error:", error));
+        };
+
+        logoutBtn.onclick = () => {
+            msalInstance.logoutRedirect({ account: currentAccount || null }).catch(error => console.error("Logout redirect error:", error));
+        };
+
+        helpBtn.onclick = (e) => {
+            e.preventDefault();
+            window.open('https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588', '_blank');
+        };
+
+        async function getToken() {
+            const account = currentAccount || msalInstance.getActiveAccount();
+            try {
+                const response = await msalInstance.acquireTokenSilent({ ...tokenRequest, account });
+                return response.accessToken;
+            } catch (error) {
+                if (error instanceof msal.InteractionRequiredAuthError) {
+                    await msalInstance.acquireTokenRedirect({ ...tokenRequest, account });
+                    throw new Error('Redirecting to acquire token');
+                }
+                throw error;
+            }
+        }
+
+        async function checkGroupMembership() {
+            try {
+                const token = await getToken();
+                const response = await fetch("https://graph.microsoft.com/v1.0/me/memberOf", {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Graph API error: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                const groups = data.value.map(item => item.id);
+
+                if (groups.includes(ALLOWED_GROUP_ID)) {
+                    updateUI();
+                    loadLatestVersions();
+                } else {
+                    const status = document.getElementById('file-operation-status');
+                    status.className = 'status-message error';
+                    status.textContent = 'Access Denied: You do not have permission to access this resource.';
+                    updateUI();
+                }
+            } catch (error) {
+                console.error("Group membership check error:", error);
+                updateUI();
+            }
+        }
+
         function updateUI() {
-            const account = msalInstance.getActiveAccount();
-            if (account) {
+            if (currentAccount) {
                 document.getElementById("login-view").style.display = "none";
                 document.getElementById("files-view").style.display = "block";
                 document.getElementById("user-info").style.display = "flex";
-                document.getElementById("username").textContent = account.name;
-                document.getElementById("logout-button").style.display = "inline-block";
                 document.getElementById("login-header-button").style.display = "none";
+                document.getElementById("logout-button").style.display = "inline-block";
+                document.getElementById("username").textContent = currentAccount.name || currentAccount.username;
+                const initials = currentAccount.name
+                    ? currentAccount.name.split(' ').map(n => n[0]).join('').substring(0, 2)
+                    : currentAccount.username.charAt(0);
+                document.getElementById("user-avatar").textContent = initials.toUpperCase();
+                document.getElementById("help-button").style.display = "flex";
             } else {
                 document.getElementById("login-view").style.display = "flex";
                 document.getElementById("files-view").style.display = "none";
                 document.getElementById("user-info").style.display = "none";
-                document.getElementById("logout-button").style.display = "none";
                 document.getElementById("login-header-button").style.display = "inline-block";
+                document.getElementById("logout-button").style.display = "none";
+                document.getElementById("help-button").style.display = "none";
             }
         }
 
-        // HANDLERS DE BOTÃO
-        document.getElementById("login-button").onclick = () => {
-            msalInstance.loginRedirect(loginRequest);
-        };
-        document.getElementById("login-header-button").onclick = () => {
-            msalInstance.loginRedirect(loginRequest);
-        };
-        document.getElementById("logout-button").onclick = () => {
-            msalInstance.logoutRedirect();
-        };
-
-        // TOKEN ACQUISITION
-        async function getToken() {
-            const account = msalInstance.getActiveAccount();
-            console.log("Active account:", account);
-
-            if (!account) {
-                console.log("No active account");
-                return null;
-            }
-
-            try {
-                const response = await msalInstance.acquireTokenSilent({
-                    ...loginRequest,
-                    account: account
+        function loadLatestVersions() {
+            fetch('programs.json')
+                .then(response => response.json())
+                .then(data => renderLatestVersions(data.programs || []))
+                .catch(error => {
+                    console.error('Error loading programs.json:', error);
+                    const status = document.getElementById('file-operation-status');
+                    status.className = 'status-message error';
+                    status.textContent = 'Error loading programs data.';
                 });
-
-                console.log("MSAL token response:", response);
-                console.log("Access token exists?", !!response.accessToken);
-                console.log("Access token length:", response.accessToken?.length);
-                console.log("Scopes granted:", response.scopes);
-
-                return response.accessToken;
-            } catch (error) {
-                console.error("acquireTokenSilent error:", error);
-                return null;
-            }
         }
 
-        // CARREGAMENTO DE DADOS (Versão simplificada para não travar o login)
-        async function loadProgramsData() {
-            const tbody = document.getElementById('versions-tbody-latest');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading data...</td></tr>';
+        function renderLatestVersions(programs) {
+            const tbody = document.getElementById('latest-versions-tbody');
+            tbody.innerHTML = '';
 
+            programs.forEach(program => {
+                const latestVersion = program.versions && program.versions.length > 0 ? program.versions[0] : null;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${program.name}</td>
+                    <td>${latestVersion ? latestVersion.version : 'N/A'}</td>
+                    <td>${latestVersion ? `<a href="${latestVersion.link}" target="_blank" rel="noopener noreferrer">Download</a>` : '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        window.onload = async () => {
             try {
-                const token = await getToken();
-                if (!token) return;
-
-                // Busca o Drive Principal
-                const drivesResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drives`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const drivesData = await drivesResp.json();
-                const driveId = drivesData.value[0].id; // Pega a primeira biblioteca disponível
-
-                // Lista os Programas
-                const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(ROOT_PATH)}:/children`;
-                const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-                const data = await resp.json();
-
-                tbody.innerHTML = '';
-                if (!data.value) throw new Error("Path not found");
-
-                for (const prog of data.value.filter(i => i.folder)) {
-                    // Busca última versão
-                    const vUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(ROOT_PATH + '/' + prog.name)}:/children?$orderby=name desc&$top=1`;
-                    const vResp = await fetch(vUrl, { headers: { Authorization: `Bearer ${token}` } });
-                    const vData = await vResp.json();
-
-                    if (vData.value && vData.value.length > 0) {
-                        const latest = vData.value[0];
-                        tbody.innerHTML += `
-                            <tr>
-                                <td><strong>${prog.name}</strong></td>
-                                <td>${latest.name}</td>
-                                <td>Loading date...</td>
-                                <td><a href="${latest.webUrl}" target="_blank">Open Folder</a></td>
-                                <td>-</td>
-                            </tr>`;
+                const redirectResponse = await msalInstance.handleRedirectPromise();
+                if (redirectResponse && redirectResponse.account) {
+                    currentAccount = redirectResponse.account;
+                    msalInstance.setActiveAccount(currentAccount);
+                    await checkGroupMembership();
+                } else {
+                    const accounts = msalInstance.getAllAccounts();
+                    if (accounts.length > 0) {
+                        currentAccount = accounts[0];
+                        msalInstance.setActiveAccount(currentAccount);
+                        await checkGroupMembership();
+                    } else {
+                        updateUI();
                     }
                 }
-            } catch (e) {
-                console.error(e);
-                tbody.innerHTML = `<tr><td colspan="5" style="color:red; text-align:center;">Logged in, but could not load files.</td></tr>`;
+            } catch (error) {
+                console.error('Error during redirect handling:', error);
+                updateUI();
             }
-        }
-
-        // LÓGICA DE INICIALIZAÇÃO (Padrão V2 que funcionava)
-        window.onload = () => {
-            msalInstance.handleRedirectPromise()
-                .then(response => {
-                    if (response) {
-                        msalInstance.setActiveAccount(response.account);
-                    } else {
-                        const currentAccounts = msalInstance.getAllAccounts();
-                        if (currentAccounts.length > 0) {
-                            msalInstance.setActiveAccount(currentAccounts[0]);
-                        }
-                    }
-                    updateUI();
-                    if (msalInstance.getActiveAccount()) {
-                        loadProgramsData();
-                    }
-                })
-                .catch(error => {
-                    console.error("Redirect Error:", error);
-                });
         };
     </script>
 </body>
-
 </html>

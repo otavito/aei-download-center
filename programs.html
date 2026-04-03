@@ -1,123 +1,352 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <title>Download Center - Programs</title>
+    <title>Download center - All versions</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+
+    <script src="msal-browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
     <header>
-        <div class="logo"><img src="logo.png" alt="Logo">
+        <div class="logo">
+            <img src="logo.png" alt="Logo">
             <h1>Download Center</h1>
         </div>
-        <button id="logout-button" style="display: none;">Logout</button>
+        <div id="user-section" class="user-section">
+            <div id="user-info" class="user-info" style="display: none;">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <span id="username">User</span>
+            </div>
+            <div class="action-buttons">
+                <button id="login-header-button">Login</button>
+                <button id="logout-button" style="display: none;">Logout</button>
+            </div>
+        </div>
     </header>
 
     <main class="main-content">
-        <div id="files-view">
-            <div class="page-header-buttons">
-                <a href="index.html" class="see-all-versions-button">← Back to Latest Versions</a>
+        <div id="login-view" class="login-container">
+            <div class="login-card">
+                <h2 class="login-title">Welcome to AEI Download Center</h2>
+                <p>Please sign in to access all program versions.</p>
+                <div id="login-error" class="status-message"></div>
+                <button id="login-button" class="login-button">Sign In with Microsoft</button>
+                <p class="login-message">Secure access to support resources.</p>
             </div>
-            <h1 class="page-title">Software Catalog</h1>
-            <div id="files-list" class="file-grid">
+        </div>
+
+        <div id="files-view" style="display: none;">
+            <h1 class="page-title">Programs</h1>
+            <div class="controls-container">
+                <a href="index.html" class="back-button" style="display: inline-block; text-decoration: none;">← Latest versions</a>
             </div>
 
-            <div id="program-details" class="program-details">
-                <h2 id="program-title">Versions</h2>
-                <table class="versions-table">
-                    <tbody id="versions-tbody-detail"></tbody>
-                </table>
-                <button onclick="document.getElementById('program-details').classList.remove('visible')">Close</button>
+            <div id="file-operation-status" class="status-message"></div>
+
+            <div class="programs-container">
+                <div id="files-list" class="file-grid">
+                    <!-- Cards will be generated dynamically from programs.json -->
+                </div>
+
+                <div id="program-details" class="program-details">
+                    <h2 id="program-title">Program Versions</h2>
+                    <table class="versions-table versions-table-latest">
+                        <thead>
+                            <tr>
+                                <th>Program</th>
+                                <th>Version</th>
+                                <th>Link</th>
+                            </tr>
+                        </thead>
+                        <tbody id="versions-tbody-latest"></tbody>
+                    </table>
+                    <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333; font-size: 1.1rem;">Previous</h3>
+                    <table class="versions-table versions-table-obsolete">
+                        <thead>
+                            <tr>
+                                <th>Program</th>
+                                <th>Version</th>
+                                <th>Link</th>
+                            </tr>
+                        </thead>
+                        <tbody id="versions-tbody-obsolete"></tbody>
+                    </table>
+                    <button class="back-button" id="back-button">← Back to Programs</button>
+                </div>
             </div>
         </div>
     </main>
 
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title">Confirm Deletion</h3>
+            <p id="confirm-message" class="modal-message">Are you sure you want to delete this item?</p>
+            <div class="modal-buttons">
+                <button id="modal-cancel" class="modal-cancel">Cancel</button>
+                <button id="modal-delete" class="modal-delete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <button id="help-button" class="help-button" title="Help" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M0 0h24v24H0z" fill="none"></path>
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"></path>
+        </svg>
+    </button>
+
     <script>
-        // Use as mesmas configurações do index.html acima
         const msalConfig = {
             auth: {
                 clientId: "b1438db9-79e6-457a-99fd-66e7ae4fe160",
                 authority: "https://login.microsoftonline.com/81dbb0d4-0d50-4aa5-a35c-04b98c73f3e0",
-                redirectUri: window.location.origin + window.location.pathname
+                redirectUri: window.location.origin + window.location.pathname,
+                postLogoutRedirectUri: window.location.origin + window.location.pathname
+            },
+            cache: {
+                cacheLocation: "sessionStorage"
             }
         };
-        const SITE_ID = "munters.sharepoint.com:/sites/aeillc";
-        const ROOT_PATH = "Shared Documents/R&D/Software Releases";
+
+        const loginRequest = {
+            scopes: ["User.Read", "GroupMember.Read.All"]
+        };
+
+        const tokenRequest = {
+            scopes: ["User.Read", "GroupMember.Read.All"]
+        };
+
+        const ALLOWED_GROUP_ID = "622b603c-f4df-41cd-88fb-ea857d6ddf79";
         const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-        async function loadCards() {
+        let currentAccount = null;
+        let programsData = {};
+        let selectedProgramId = null;
+
+        const loginBtn = document.getElementById("login-button");
+        const loginHeaderBtn = document.getElementById("login-header-button");
+        const logoutBtn = document.getElementById("logout-button");
+        const helpBtn = document.getElementById("help-button");
+        const backBtn = document.getElementById("back-button");
+
+        loginBtn.onclick = () => {
+            msalInstance.loginRedirect(loginRequest).catch(error => console.error("Login redirect error:", error));
+        };
+
+        loginHeaderBtn.onclick = () => {
+            msalInstance.loginRedirect(loginRequest).catch(error => console.error("Login redirect error:", error));
+        };
+
+        logoutBtn.onclick = () => {
+            msalInstance.logoutRedirect({ account: currentAccount || null }).catch(error => console.error("Logout redirect error:", error));
+        };
+
+        helpBtn.onclick = (e) => {
+            e.preventDefault();
+            window.open('https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588', '_blank');
+        };
+
+        backBtn.onclick = () => {
+            backToPrograms();
+        };
+
+        async function getToken() {
+            const account = currentAccount || msalInstance.getActiveAccount();
             try {
-                const token = await getToken();
-
-                // Descobre o Drive primeiro
-                const driveResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const driveData = await driveResp.json();
-                const driveId = driveData.id;
-
-                const cleanPath = "R&D/Software Releases";
-                const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(cleanPath)}:/children`;
-
-                const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-                const data = await resp.json();
-
-                const grid = document.getElementById('files-list');
-                grid.innerHTML = '';
-
-                if (!data.value) return;
-
-                data.value.filter(i => i.folder).forEach(prog => {
-                    const card = document.createElement('div');
-                    card.className = 'item-card';
-                    card.innerHTML = `<h3>${prog.name}</h3><p>Click to see all versions</p>`;
-                    // Passa o driveId para a próxima função
-                    card.onclick = () => showDetails(prog.name, token, driveId);
-                    grid.appendChild(card);
-                });
-            } catch (e) {
-                console.error(e);
+                const response = await msalInstance.acquireTokenSilent({ ...tokenRequest, account });
+                return response.accessToken;
+            } catch (error) {
+                if (error instanceof msal.InteractionRequiredAuthError) {
+                    await msalInstance.acquireTokenRedirect({ ...tokenRequest, account });
+                    throw new Error('Redirecting to acquire token');
+                }
+                throw error;
             }
         }
 
-        async function showDetails(name, token, driveId) {
-            const cleanPath = "R&D/Software Releases";
-            const vUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(cleanPath + '/' + name)}:/children?$orderby=name desc`;
+        async function checkGroupMembership() {
+            try {
+                const token = await getToken();
+                const response = await fetch("https://graph.microsoft.com/v1.0/me/memberOf", {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
 
-            const vResp = await fetch(vUrl, { headers: { Authorization: `Bearer ${token}` } });
-            const vData = await vResp.json();
-            // ... restante da lógica de exibição da tabela ...
+                if (!response.ok) {
+                    throw new Error(`Graph API error: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                const groups = data.value.map(item => item.id);
+
+                if (groups.includes(ALLOWED_GROUP_ID)) {
+                    updateUI();
+                    loadProgramsData();
+                } else {
+                    document.getElementById('files-list').innerHTML = '<div class="status-message error" style="display: block; padding: 20px; text-align: center;">Access Denied: You do not have permission to access this resource.</div>';
+                    updateUI();
+                }
+            } catch (error) {
+                console.error("Group membership check error:", error);
+                updateUI();
+            }
         }
 
-        async function showDetails(name, token) {
-            const vResp = await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/drive/root:/${ROOT_PATH}/${name}:/children?$orderby=name desc`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const vData = await vResp.json();
-            const tbody = document.getElementById('versions-tbody-detail');
-            tbody.innerHTML = '';
+        function updateUI() {
+            if (currentAccount) {
+                document.getElementById("login-view").style.display = "none";
+                document.getElementById("files-view").style.display = "block";
+                document.getElementById("user-info").style.display = "flex";
+                document.getElementById("login-header-button").style.display = "none";
+                document.getElementById("logout-button").style.display = "inline-block";
+                document.getElementById("username").textContent = currentAccount.name || currentAccount.username;
+                const initials = currentAccount.name
+                    ? currentAccount.name.split(' ').map(n => n[0]).join('').substring(0, 2)
+                    : currentAccount.username.charAt(0);
+                document.getElementById("user-avatar").textContent = initials.toUpperCase();
+                document.getElementById("help-button").style.display = "flex";
+            } else {
+                document.getElementById("login-view").style.display = "flex";
+                document.getElementById("files-view").style.display = "none";
+                document.getElementById("user-info").style.display = "none";
+                document.getElementById("login-header-button").style.display = "inline-block";
+                document.getElementById("logout-button").style.display = "none";
+                document.getElementById("help-button").style.display = "none";
+            }
+        }
 
-            vData.value.forEach(v => {
-                tbody.innerHTML += `<tr><td>${v.name}</td><td><a href="${v.webUrl}" target="_blank">View Folder</a></td></tr>`;
+        function loadProgramsData() {
+            fetch('programs.json')
+                .then(response => response.json())
+                .then(data => {
+                    programsData = {};
+                    data.programs.forEach(program => {
+                        programsData[program.id] = {
+                            name: program.name,
+                            versions: program.versions || []
+                        };
+                    });
+                    generateProgramCards();
+                })
+                .catch(error => {
+                    console.error('Error loading programs.json:', error);
+                    alert('Error loading programs data. Please make sure programs.json is in the same directory.');
+                });
+        }
+
+        function generateProgramCards() {
+            const filesList = document.getElementById('files-list');
+            filesList.innerHTML = '';
+
+            Object.keys(programsData).forEach(programId => {
+                const program = programsData[programId];
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.setAttribute('data-program-id', programId);
+
+                const folderIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 4H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V8h14v10z" />
+                </svg>`;
+
+                const lastVersion = program.versions.length > 0 ? program.versions[0].version : 'N/A';
+
+                card.innerHTML = `
+                    <div class="folder-icon">${folderIcon}</div>
+                    <div class="item-name">${program.name}</div>
+                    <div class="item-info">Last version: ${lastVersion}</div>
+                `;
+
+                card.addEventListener('click', () => selectProgram(programId));
+                filesList.appendChild(card);
             });
+        }
+
+        function selectProgram(programId) {
+            document.querySelectorAll('.item-card').forEach(card => card.classList.remove('selected'));
+
+            const selectedCard = document.querySelector(`[data-program-id="${programId}"]`);
+            if (selectedCard) {
+                selectedCard.classList.add('selected');
+            }
+
+            selectedProgramId = programId;
+            const programData = programsData[programId];
+            if (!programData) return;
+
+            document.getElementById('program-title').textContent = `${programData.name} - Versions`;
+
+            const tbodyLatest = document.getElementById('versions-tbody-latest');
+            tbodyLatest.innerHTML = '';
+
+            if (programData.versions.length > 0) {
+                const latestVersion = programData.versions[0];
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${latestVersion.program}</td>
+                    <td>${latestVersion.version}</td>
+                    <td><a href="${latestVersion.link}" target="_blank" rel="noopener noreferrer">Download</a></td>
+                `;
+                tbodyLatest.appendChild(row);
+            }
+
+            const tbodyObsolete = document.getElementById('versions-tbody-obsolete');
+            tbodyObsolete.innerHTML = '';
+
+            for (let i = 1; i < programData.versions.length; i++) {
+                const version = programData.versions[i];
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${version.program}</td>
+                    <td>${version.version}</td>
+                    <td><a href="${version.link}" target="_blank" rel="noopener noreferrer">Download</a></td>
+                `;
+                tbodyObsolete.appendChild(row);
+            }
+
             document.getElementById('program-details').classList.add('visible');
         }
 
+        function backToPrograms() {
+            document.getElementById('program-details').classList.remove('visible');
+            document.querySelectorAll('.item-card').forEach(card => card.classList.remove('selected'));
+            selectedProgramId = null;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const modalCancel = document.getElementById('modal-cancel');
+            const confirmModal = document.getElementById('confirm-modal');
+            if (modalCancel) {
+                modalCancel.addEventListener('click', () => { confirmModal.style.display = 'none'; });
+            }
+        });
+
         window.onload = async () => {
-            await msalInstance.handleRedirectPromise();
-            if (msalInstance.getAllAccounts().length > 0) {
-                msalInstance.setActiveAccount(msalInstance.getAllAccounts()[0]);
-                document.getElementById("logout-button").style.display = "block";
-                loadCards();
-            } else {
-                window.location.href = "index.html"; // Redireciona se não logado
+            try {
+                const redirectResponse = await msalInstance.handleRedirectPromise();
+                if (redirectResponse && redirectResponse.account) {
+                    currentAccount = redirectResponse.account;
+                    msalInstance.setActiveAccount(currentAccount);
+                    await checkGroupMembership();
+                } else {
+                    const accounts = msalInstance.getAllAccounts();
+                    if (accounts.length > 0) {
+                        currentAccount = accounts[0];
+                        msalInstance.setActiveAccount(currentAccount);
+                        await checkGroupMembership();
+                    } else {
+                        updateUI();
+                    }
+                }
+            } catch (error) {
+                console.error('Error during redirect handling:', error);
+                updateUI();
             }
         };
     </script>
 </body>
-
 </html>
