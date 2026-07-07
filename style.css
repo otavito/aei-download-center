@@ -617,3 +617,169 @@ header {
 .login-message a:hover {
     text-decoration: underline;
 }
+
+.workspace-view {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+}
+
+.hero-panel {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 24px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(0, 103, 165, 0.96), rgba(0, 134, 214, 0.9));
+    color: white;
+    box-shadow: 0 18px 40px rgba(0, 103, 165, 0.2);
+}
+
+.eyebrow {
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.74rem;
+    opacity: 0.85;
+}
+
+.page-subtitle {
+    margin-top: 10px;
+    max-width: 62ch;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.98rem;
+}
+
+.sharepoint-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(8px);
+}
+
+.sharepoint-link:hover {
+    background: rgba(255, 255, 255, 0.24);
+}
+
+.folders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    width: 100%;
+}
+
+.folder-card {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 20px;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid rgba(0, 103, 165, 0.12);
+    box-shadow: 0 10px 24px rgba(24, 39, 75, 0.06);
+    text-decoration: none;
+    color: #18324f;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    min-height: 140px;
+}
+
+.folder-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 30px rgba(24, 39, 75, 0.1);
+    border-color: rgba(0, 103, 165, 0.28);
+}
+
+.folder-card-icon {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 103, 165, 0.1);
+    color: var(--primary-color);
+}
+
+.folder-card-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.folder-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.folder-card-body h3 {
+    font-size: 1.05rem;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.folder-card-body p {
+    color: #5d6b7c;
+    font-size: 0.92rem;
+}
+
+.folder-card-action {
+    margin-top: auto;
+    color: var(--primary-color);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.loading-state,
+.empty-state {
+    padding: 24px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px dashed rgba(0, 103, 165, 0.2);
+    color: #41566f;
+}
+
+.empty-state.error-state {
+    color: #b42318;
+    border-color: rgba(229, 57, 53, 0.28);
+    background: rgba(255, 235, 238, 0.78);
+}
+
+@media (max-width: 768px) {
+    header {
+        height: auto;
+        padding: 14px 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .main-content {
+        margin-top: 0;
+        padding: 16px;
+    }
+
+    .login-card {
+        padding: 28px 22px;
+    }
+
+    .hero-panel {
+        padding: 20px;
+    }
+
+    .sharepoint-link {
+        width: 100%;
+    }
+}

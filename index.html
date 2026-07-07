@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Download center - Latest versions</title>
+    <title>Download center - SharePoint folders</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -29,33 +29,26 @@
     <main class="main-content">
         <div id="login-view" class="login-container">
             <div class="login-card">
-                <h2 class="login-title">Welcome to AEI Download Center</h2>
-                <p>Please sign in to access the latest software versions.</p>
+                <h2 class="login-title">Download Center</h2>
+                <p>Entre com sua conta Microsoft para acessar as pastas do SharePoint.</p>
                 <div id="login-error" class="status-message"></div>
-                <button id="login-button" class="login-button">Sign In with Microsoft</button>
-                <p class="login-message">Secure access to support resources.</p>
+                <button id="login-button" class="login-button">Entrar com Microsoft</button>
+                <p class="login-message">Acesso protegido pelo grupo Speria Download Center.</p>
             </div>
         </div>
 
-        <div id="files-view" style="display: none;">
-            <h1 class="page-title">Latest Versions</h1>
-
-            <div class="controls-container">
-                <a href="programs.html" class="back-button" style="display: inline-block; text-decoration: none;">All versions</a>
+        <div id="files-view" class="workspace-view" style="display: none;">
+            <div class="hero-panel">
+                <div>
+                    <p class="eyebrow">Microsoft Graph</p>
+                    <h1 class="page-title">Pastas de Software Releases</h1>
+                    <p class="page-subtitle">As pastas abaixo são carregadas após o login e a validação de grupo.</p>
+                </div>
+                <a class="sharepoint-link" href="https://munters.sharepoint.com/sites/aeillc/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2Faeillc%2FShared%20Documents%2FR%26D%2FSoftware%20Releases&viewid=dbeff803%2D869f%2D453b%2Dabcc%2Dfb8f7d45c245" target="_blank" rel="noopener noreferrer">Abrir biblioteca no SharePoint</a>
             </div>
 
             <div id="file-operation-status" class="status-message"></div>
-
-            <table class="versions-table versions-table-latest">
-                <thead>
-                    <tr>
-                        <th>Program</th>
-                        <th>Version</th>
-                        <th>Link</th>
-                    </tr>
-                </thead>
-                <tbody id="latest-versions-tbody"></tbody>
-            </table>
+            <div id="folders-grid" class="folders-grid" aria-live="polite"></div>
         </div>
     </main>
 
@@ -66,174 +59,6 @@
         </svg>
     </button>
 
-    <script>
-        const msalConfig = {
-            auth: {
-                clientId: "b1438db9-79e6-457a-99fd-66e7ae4fe160",
-                authority: "https://login.microsoftonline.com/81dbb0d4-0d50-4aa5-a35c-04b98c73f3e0",
-                redirectUri: window.location.origin + window.location.pathname,
-                postLogoutRedirectUri: window.location.origin + window.location.pathname
-            },
-            cache: {
-                cacheLocation: "sessionStorage"
-            }
-        };
-
-        const loginRequest = {
-            scopes: ["User.Read", "GroupMember.Read.All"]
-        };
-
-        const tokenRequest = {
-            scopes: ["User.Read", "GroupMember.Read.All"]
-        };
-
-        const ALLOWED_GROUP_ID = "622b603c-f4df-41cd-88fb-ea857d6ddf79";
-        const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-        let currentAccount = null;
-
-        const loginBtn = document.getElementById("login-button");
-        const loginHeaderBtn = document.getElementById("login-header-button");
-        const logoutBtn = document.getElementById("logout-button");
-        const helpBtn = document.getElementById("help-button");
-
-        loginBtn.onclick = () => {
-            msalInstance.loginRedirect(loginRequest).catch(error => console.error("Login redirect error:", error));
-        };
-
-        loginHeaderBtn.onclick = () => {
-            msalInstance.loginRedirect(loginRequest).catch(error => console.error("Login redirect error:", error));
-        };
-
-        logoutBtn.onclick = () => {
-            msalInstance.logoutRedirect({ account: currentAccount || null }).catch(error => console.error("Logout redirect error:", error));
-        };
-
-        helpBtn.onclick = (e) => {
-            e.preventDefault();
-            window.open('https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588', '_blank');
-        };
-
-        async function getToken() {
-            const account = currentAccount || msalInstance.getActiveAccount();
-            try {
-                const response = await msalInstance.acquireTokenSilent({ ...tokenRequest, account });
-                return response.accessToken;
-            } catch (error) {
-                if (error instanceof msal.InteractionRequiredAuthError) {
-                    await msalInstance.acquireTokenRedirect({ ...tokenRequest, account });
-                    throw new Error('Redirecting to acquire token');
-                }
-                throw error;
-            }
-        }
-
-        async function checkGroupMembership() {
-            try {
-                const token = await getToken();
-                const response = await fetch("https://graph.microsoft.com/v1.0/me/memberOf", {
-                    method: "GET",
-                    headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Graph API error: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                const groups = data.value.map(item => item.id);
-
-                if (groups.includes(ALLOWED_GROUP_ID)) {
-                    updateUI();
-                    loadLatestVersions();
-                } else {
-                    const status = document.getElementById('file-operation-status');
-                    status.className = 'status-message error';
-                    status.textContent = 'Access Denied: You do not have permission to access this resource.';
-                    updateUI();
-                }
-            } catch (error) {
-                console.error("Group membership check error:", error);
-                updateUI();
-            }
-        }
-
-        function updateUI() {
-            if (currentAccount) {
-                document.getElementById("login-view").style.display = "none";
-                document.getElementById("files-view").style.display = "block";
-                document.getElementById("user-info").style.display = "flex";
-                document.getElementById("login-header-button").style.display = "none";
-                document.getElementById("logout-button").style.display = "inline-block";
-                document.getElementById("username").textContent = currentAccount.name || currentAccount.username;
-                const initials = currentAccount.name
-                    ? currentAccount.name.split(' ').map(n => n[0]).join('').substring(0, 2)
-                    : currentAccount.username.charAt(0);
-                document.getElementById("user-avatar").textContent = initials.toUpperCase();
-                document.getElementById("help-button").style.display = "flex";
-            } else {
-                document.getElementById("login-view").style.display = "flex";
-                document.getElementById("files-view").style.display = "none";
-                document.getElementById("user-info").style.display = "none";
-                document.getElementById("login-header-button").style.display = "inline-block";
-                document.getElementById("logout-button").style.display = "none";
-                document.getElementById("help-button").style.display = "none";
-            }
-        }
-
-        function loadLatestVersions() {
-            fetch('programs.json')
-                .then(response => response.json())
-                .then(data => renderLatestVersions(data.programs || []))
-                .catch(error => {
-                    console.error('Error loading programs.json:', error);
-                    const status = document.getElementById('file-operation-status');
-                    status.className = 'status-message error';
-                    status.textContent = 'Error loading programs data.';
-                });
-        }
-
-        function renderLatestVersions(programs) {
-            const tbody = document.getElementById('latest-versions-tbody');
-            tbody.innerHTML = '';
-
-            programs.forEach(program => {
-                const latestVersion = program.versions && program.versions.length > 0 ? program.versions[0] : null;
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${program.name}</td>
-                    <td>${latestVersion ? latestVersion.version : 'N/A'}</td>
-                    <td>${latestVersion ? `<a href="${latestVersion.link}" target="_blank" rel="noopener noreferrer">Download</a>` : '-'}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        window.onload = async () => {
-            try {
-                const redirectResponse = await msalInstance.handleRedirectPromise();
-                if (redirectResponse && redirectResponse.account) {
-                    currentAccount = redirectResponse.account;
-                    msalInstance.setActiveAccount(currentAccount);
-                    await checkGroupMembership();
-                } else {
-                    const accounts = msalInstance.getAllAccounts();
-                    if (accounts.length > 0) {
-                        currentAccount = accounts[0];
-                        msalInstance.setActiveAccount(currentAccount);
-                        await checkGroupMembership();
-                    } else {
-                        updateUI();
-                    }
-                }
-            } catch (error) {
-                console.error('Error during redirect handling:', error);
-                updateUI();
-            }
-        };
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>

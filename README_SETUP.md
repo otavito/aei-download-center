@@ -35,6 +35,7 @@ Visit: `http://127.0.0.1:5500`
 - **API Permissions** (delegated):
   - User.Read
   - GroupMember.Read.All
+- Sites.Read.All
   - Grant admin consent
 
 ### 4. File Structure
@@ -52,17 +53,18 @@ download_center/
 ## MSAL Integration Summary
 
 **Current Code Pattern:**
-1. `loadAuthConfig()` - fetch `auth-config.json` and initialize msalInstance
-2. `handleRedirectPromise()` - check for post-redirect accounts on page load
-3. `login()` - call `msalInstance.loginRedirect()` to sign in
-4. `logout()` - call `msalInstance.logoutRedirect()`
-5. `checkGroupMembership()` - fetch `/me/memberOf` to validate group access
+1. `handleRedirectPromise()` - check for post-redirect accounts on page load
+2. `login()` - call `msalInstance.loginRedirect()` to sign in
+3. `logout()` - call `msalInstance.logoutRedirect()`
+4. `checkGroupMembership()` - fetch `/me/memberOf/microsoft.graph.group` to validate group access
+5. `loadSharePointFolders()` - fetch the target SharePoint path through Microsoft Graph and render folders as responsive hyperlinks
 
 **Key Changes from Previous:**
 - Removed `loginPopup()` (less reliable in production) → using `loginRedirect()` (redirect flow)
 - Simplified script loading: MSAL is loaded via `<script src="...">` in `<head>` (not dynamic)
-- Consolidated error messages via `showStatus()`
-- All MSAL checks happen after `loadAuthConfig()` resolves
+- Consolidated error messages via `setStatus()`
+- The app now shows only the folder list returned by Microsoft Graph
+- SharePoint access requires Graph delegated permission `Sites.Read.All` in addition to the login and group scopes
 
 ## Troubleshooting
 
@@ -81,8 +83,13 @@ download_center/
 
 ### Group check fails (403 from Graph)
 - Ensure admin granted `GroupMember.Read.All` consent
-- Token scope matches: `["User.Read", "GroupMember.Read.All"]`
+- Token scope matches: `["User.Read", "GroupMember.Read.All", "Sites.Read.All"]`
 - Group ID in `auth-config.json` is correct
+
+### SharePoint folder list fails (403 from Graph)
+- Ensure `Sites.Read.All` is added to the app registration and admin consent is granted
+- Confirm the target site path is `https://munters.sharepoint.com/sites/aeillc`
+- Confirm the folder path is `R&D/Software Releases` inside the default document library
 
 ## Production Checklist
 - [ ] `auth-config.json` committed (no secrets inside)
