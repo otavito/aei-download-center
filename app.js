@@ -205,7 +205,7 @@ function renderFolders(folders) {
 
         const meta = document.createElement("p");
         meta.textContent = folder.lastModifiedDateTime
-            ? `Last updated ${new Date(folder.lastModifiedDateTime).toLocaleString("pt-BR")}`
+            ? `Last updated ${new Date(folder.lastModifiedDateTime).toLocaleString("en-US")}`
             : "Open in SharePoint";
 
         const action = document.createElement("span");
