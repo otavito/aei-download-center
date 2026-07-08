@@ -11,18 +11,14 @@ const msalConfig = {
 };
 
 const loginRequest = {
-    scopes: ["User.Read", "GroupMember.Read.All", "Sites.Read.All"]
+    scopes: ["User.Read", "Sites.Read.All"]
 };
 
 const tokenRequest = {
-    scopes: ["User.Read", "GroupMember.Read.All", "Sites.Read.All"]
+    scopes: ["User.Read", "Sites.Read.All"]
 };
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
-const ALLOWED_GROUP_IDS = [
-    "5af94a6e-353c-4c0d-93b0-18343fcde6ec",
-    "a7abb646-5d64-498a-9ad0-39513f83c793"
-];
 const SHAREPOINT_HOST = "munters.sharepoint.com";
 const SHAREPOINT_SITE_PATH = "/sites/aeillc";
 const SHAREPOINT_FOLDER_PATH = "/R&D/Software Releases";
@@ -142,28 +138,6 @@ async function fetchGraphJson(url, token) {
     return response.json();
 }
 
-async function postGraphJson(url, token, body) {
-    const response = await fetch(url, {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-    });
-
-    if (!response.ok) {
-        const details = await response.text();
-        const error = new Error(`Graph API error ${response.status}: ${response.statusText}`);
-        error.status = response.status;
-        error.details = details;
-        throw error;
-    }
-
-    return response.json();
-}
-
 async function fetchAllGraphItems(url, token) {
     const items = [];
     let nextUrl = url;
@@ -177,14 +151,6 @@ async function fetchAllGraphItems(url, token) {
     }
 
     return items;
-}
-
-async function userIsInAllowedGroup(token) {
-    const result = await postGraphJson(`${GRAPH_BASE}/me/checkMemberGroups`, token, {
-        groupIds: ALLOWED_GROUP_IDS
-    });
-
-    return Array.isArray(result.value) && result.value.length > 0;
 }
 
 async function loadSharePointFolders(token) {
@@ -259,24 +225,10 @@ function renderFolders(folders) {
 
 async function loadFoldersForCurrentUser() {
     try {
-        setStatus("Verificando o grupo autorizado...", "info");
         setLoadingState("Carregando pastas do SharePoint...");
 
         const token = await getToken();
-        const allowed = await userIsInAllowedGroup(token);
-
-        if (!allowed) {
-            setStatus("Acesso negado. O usuário não faz parte do grupo Speria Download Center.", "error");
-            foldersGrid.innerHTML = "";
-
-            const denied = document.createElement("div");
-            denied.className = "empty-state error-state";
-            denied.textContent = "Acesso negado para este grupo.";
-            foldersGrid.appendChild(denied);
-            return;
-        }
-
-        setStatus("Acesso validado. Buscando pastas no SharePoint...", "info");
+        setStatus("Buscando pastas no SharePoint...", "info");
         const folders = await loadSharePointFolders(token);
         renderFolders(folders);
         setStatus(`Encontradas ${folders.length} pastas no SharePoint.`, "success");
@@ -284,7 +236,7 @@ async function loadFoldersForCurrentUser() {
         console.error("Erro ao carregar pastas:", error);
 
         if (error.status === 403) {
-            setStatus("O token atual não possui permissão para ler o SharePoint. Confirme Sites.Read.All com admin consent.", "error");
+            setStatus("Acesso negado no SharePoint. Sua conta não possui permissão para esta biblioteca/pasta.", "error");
         } else {
             setStatus("Erro ao carregar as pastas do SharePoint.", "error");
         }
