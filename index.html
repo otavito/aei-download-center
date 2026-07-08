@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Download center - SharePoint folders</title>
+    <title>Download center - AEI</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <link rel="icon" type="image/png" href="favicon.svg">
     <script src="msal-browser.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
         <div class="logo">
-            <img src="logo.png" alt="Logo">
+            <img src="aei_logo.svg" alt="Logo">
             <h1>Download Center</h1>
         </div>
         <div id="user-section" class="user-section">
@@ -30,21 +30,20 @@
         <div id="login-view" class="login-container">
             <div class="login-card">
                 <h2 class="login-title">Download Center</h2>
-                <p>Entre com sua conta Microsoft para acessar as pastas do SharePoint.</p>
+                <p>Log in with your Microsoft account.</p>
                 <div id="login-error" class="status-message"></div>
-                <button id="login-button" class="login-button">Entrar com Microsoft</button>
-                <p class="login-message">Acesso protegido pelo grupo Speria Download Center.</p>
+                <button id="login-button" class="login-button">Sign in with Microsoft</button>
+                <p class="login-message">Access protected by the Speria Download Center group.</p>
             </div>
         </div>
 
         <div id="files-view" class="workspace-view" style="display: none;">
             <div class="hero-panel">
                 <div>
-                    <p class="eyebrow">Microsoft Graph</p>
-                    <h1 class="page-title">Pastas de Software Releases</h1>
-                    <p class="page-subtitle">As pastas abaixo são carregadas após o login e a validação de grupo.</p>
+                    <p class="eyebrow">Latest versions</p>
+                    <h1 class="page-title">Software Releases Folders</h1>
+                    <p class="page-subtitle">Software Releases Updated Repository.</p>
                 </div>
-                <a class="sharepoint-link" href="https://munters.sharepoint.com/sites/aeillc/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2Faeillc%2FShared%20Documents%2FR%26D%2FSoftware%20Releases&viewid=dbeff803%2D869f%2D453b%2Dabcc%2Dfb8f7d45c245" target="_blank" rel="noopener noreferrer">Abrir biblioteca no SharePoint</a>
             </div>
 
             <div id="file-operation-status" class="status-message"></div>

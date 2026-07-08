@@ -205,12 +205,12 @@ function renderFolders(folders) {
 
         const meta = document.createElement("p");
         meta.textContent = folder.lastModifiedDateTime
-            ? `Atualizada em ${new Date(folder.lastModifiedDateTime).toLocaleString("pt-BR")}`
-            : "Abrir pasta no SharePoint";
+            ? `Last updated ${new Date(folder.lastModifiedDateTime).toLocaleString("pt-BR")}`
+            : "Open in SharePoint";
 
         const action = document.createElement("span");
         action.className = "folder-card-action";
-        action.textContent = "Abrir pasta";
+        action.textContent = "Open folder";
 
         body.appendChild(title);
         body.appendChild(meta);
