@@ -636,6 +636,7 @@ header {
     background: linear-gradient(135deg, rgba(0, 103, 165, 0.96), rgba(0, 134, 214, 0.9));
     color: white;
     box-shadow: 0 18px 40px rgba(0, 103, 165, 0.2);
+    margin-bottom: 1 rem;
 }
 
 .eyebrow {
