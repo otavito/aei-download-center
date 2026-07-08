@@ -155,7 +155,7 @@ async function fetchAllGraphItems(url, token) {
 }
 
 async function userIsInAllowedGroup(token) {
-    const groupsUrl = `${GRAPH_BASE}/me/memberOf/microsoft.graph.group?$select=id&$top=999`;
+    const groupsUrl = `${GRAPH_BASE}/me/transitiveMemberOf/microsoft.graph.group?$select=id&$top=999`;
     const groups = await fetchAllGraphItems(groupsUrl, token);
     return groups.some(group => group.id === ALLOWED_GROUP_ID);
 }
