@@ -19,8 +19,7 @@ const tokenRequest = {
 };
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
-const SHAREPOINT_HOST = "munters.sharepoint.com";
-const SHAREPOINT_SITE_PATH = "/sites/aeillc";
+const DRIVE_ID = "b!SA8vmOt-pkCP3QW3hOWnJjUxRieT2MZHgYNHlG4pkimr8BuGOTTbTbrQU7ICK3Nv";
 const SHAREPOINT_FOLDER_PATH = "/R&D/Software Releases";
 
 const msalInstance = new msal.PublicClientApplication(msalConfig);
@@ -155,8 +154,8 @@ async function fetchAllGraphItems(url, token) {
 
 async function loadSharePointFolders(token) {
     const folderPath = encodeGraphPath(SHAREPOINT_FOLDER_PATH);
-    const siteUrl = `${GRAPH_BASE}/sites/${SHAREPOINT_HOST}:${SHAREPOINT_SITE_PATH}:/drive/root:${folderPath}:/children?$select=name,webUrl,folder,lastModifiedDateTime&$top=999`;
-    const items = await fetchAllGraphItems(siteUrl, token);
+    const driveUrl = `${GRAPH_BASE}/drives/${DRIVE_ID}/root:${folderPath}:/children?$select=name,webUrl,folder,lastModifiedDateTime&$top=999`;
+    const items = await fetchAllGraphItems(driveUrl, token);
 
     return items
         .filter(item => item.folder)
