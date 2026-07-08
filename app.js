@@ -19,7 +19,10 @@ const tokenRequest = {
 };
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
-const ALLOWED_GROUP_ID = "5af94a6e-353c-4c0d-93b0-18343fcde6ec";
+const ALLOWED_GROUP_IDS = [
+    "5af94a6e-353c-4c0d-93b0-18343fcde6ec",
+    "a7abb646-5d64-498a-9ad0-39513f83c793"
+];
 const SHAREPOINT_HOST = "munters.sharepoint.com";
 const SHAREPOINT_SITE_PATH = "/sites/aeillc";
 const SHAREPOINT_FOLDER_PATH = "/R&D/Software Releases";
@@ -139,6 +142,28 @@ async function fetchGraphJson(url, token) {
     return response.json();
 }
 
+async function postGraphJson(url, token, body) {
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+        const details = await response.text();
+        const error = new Error(`Graph API error ${response.status}: ${response.statusText}`);
+        error.status = response.status;
+        error.details = details;
+        throw error;
+    }
+
+    return response.json();
+}
+
 async function fetchAllGraphItems(url, token) {
     const items = [];
     let nextUrl = url;
@@ -155,9 +180,11 @@ async function fetchAllGraphItems(url, token) {
 }
 
 async function userIsInAllowedGroup(token) {
-    const groupsUrl = `${GRAPH_BASE}/me/transitiveMemberOf/microsoft.graph.group?$select=id&$top=999`;
-    const groups = await fetchAllGraphItems(groupsUrl, token);
-    return groups.some(group => group.id === ALLOWED_GROUP_ID);
+    const result = await postGraphJson(`${GRAPH_BASE}/me/checkMemberGroups`, token, {
+        groupIds: ALLOWED_GROUP_IDS
+    });
+
+    return Array.isArray(result.value) && result.value.length > 0;
 }
 
 async function loadSharePointFolders(token) {
