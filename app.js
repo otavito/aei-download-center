@@ -230,7 +230,6 @@ async function loadFoldersForCurrentUser() {
         setStatus("Buscando pastas no SharePoint...", "info");
         const folders = await loadSharePointFolders(token);
         renderFolders(folders);
-        setStatus(`Encontradas ${folders.length} pastas no SharePoint.`, "success");
     } catch (error) {
         console.error("Erro ao carregar pastas:", error);
 
