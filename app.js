@@ -309,19 +309,23 @@ async function handleViewReleaseNotes() {
 
         releaseNotesButton.disabled = true;
         releaseNotesButton.textContent = "Loading release notes...";
+        releaseNotesTitle.textContent = `Release Notes - ${programFolder.label}`;
+        releaseNotesContent.textContent = "Loading release notes...";
+        releaseNotesOpenLink.href = "#";
+        openReleaseNotesModal();
 
         const token = await getToken();
         const releaseNotesFile = await loadReleaseNotesFile(token, selectedProgram);
         const releaseNotesText = await loadReleaseNotesContent(token, releaseNotesFile.id);
 
-        releaseNotesTitle.textContent = `Release Notes - ${programFolder.label}`;
         releaseNotesContent.textContent = releaseNotesText || "Release notes file is empty.";
         releaseNotesOpenLink.href = releaseNotesFile.webUrl;
-
-        openReleaseNotesModal();
     } catch (error) {
         console.error("Erro ao carregar release notes:", error);
         setStatus("Não foi possível carregar o arquivo de release notes.", "error");
+        if (releaseNotesContent) {
+            releaseNotesContent.textContent = "Could not load release notes for this program.";
+        }
     } finally {
         releaseNotesButton.disabled = false;
         releaseNotesButton.textContent = defaultLabel;
@@ -477,6 +481,8 @@ function bindEvents() {
             closeReleaseNotesModal();
         }
     });
+
+    closeReleaseNotesModal();
 }
 
 async function bootstrap() {

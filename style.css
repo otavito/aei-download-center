@@ -740,6 +740,10 @@ body.modal-open {
     z-index: 300;
 }
 
+.release-notes-modal[hidden] {
+    display: none;
+}
+
 .release-notes-modal-content {
     width: min(920px, 100%);
     max-height: min(86vh, 900px);
