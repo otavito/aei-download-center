@@ -234,10 +234,12 @@ function renderFolders(folders) {
         return;
     }
 
-    const latestVersion = folders.filter(folder => parseVersion(folder.name)).at(-1);
-    const foldersForDisplay = latestVersion
-        ? [latestVersion, ...folders.filter(folder => folder !== latestVersion)]
-        : folders;
+    const versionedFolders = folders.filter(folder => parseVersion(folder.name));
+    const latestVersion = versionedFolders.at(-1);
+    const foldersForDisplay = [
+        ...versionedFolders.reverse(),
+        ...folders.filter(folder => !parseVersion(folder.name))
+    ];
 
     foldersForDisplay.forEach(folder => {
         const link = document.createElement("a");
