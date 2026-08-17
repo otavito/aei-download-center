@@ -21,6 +21,18 @@ const tokenRequest = {
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 const DRIVE_ID = "b!SA8vmOt-pkCP3QW3hOWnJjUxRieT2MZHgYNHlG4pkimr8BuGOTTbTbrQU7ICK3Nv";
 const SHAREPOINT_FOLDER_PATH = "/R&D/Software Releases";
+const PROGRAM_FOLDERS = {
+    integra: {
+        path: SHAREPOINT_FOLDER_PATH,
+        excludedNames: ["Config", "IntraE"]
+    },
+    intrae: {
+        path: `${SHAREPOINT_FOLDER_PATH}/IntraE`
+    },
+    config: {
+        path: `${SHAREPOINT_FOLDER_PATH}/Config`
+    }
+};
 
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 
@@ -33,6 +45,7 @@ const helpBtn = document.getElementById("help-button");
 const loginError = document.getElementById("login-error");
 const statusMessage = document.getElementById("file-operation-status");
 const foldersGrid = document.getElementById("folders-grid");
+const programFilter = document.getElementById("program-filter");
 
 function setLoginError(message = "") {
     if (!loginError) {
@@ -152,13 +165,15 @@ async function fetchAllGraphItems(url, token) {
     return items;
 }
 
-async function loadSharePointFolders(token) {
-    const folderPath = encodeGraphPath(SHAREPOINT_FOLDER_PATH);
+async function loadSharePointFolders(token, program = "integra") {
+    const programFolder = PROGRAM_FOLDERS[program] || PROGRAM_FOLDERS.integra;
+    const excludedNames = new Set(programFolder.excludedNames || []);
+    const folderPath = encodeGraphPath(programFolder.path);
     const driveUrl = `${GRAPH_BASE}/drives/${DRIVE_ID}/root:${folderPath}:/children?$select=name,webUrl,folder,lastModifiedDateTime&$top=999`;
     const items = await fetchAllGraphItems(driveUrl, token);
 
     return items
-        .filter(item => item.folder)
+        .filter(item => item.folder && !excludedNames.has(item.name))
         .map(item => ({
             name: item.name,
             webUrl: item.webUrl,
@@ -228,7 +243,8 @@ async function loadFoldersForCurrentUser() {
 
         const token = await getToken();
         setStatus("Buscando pastas no SharePoint...", "info");
-        const folders = await loadSharePointFolders(token);
+        const selectedProgram = programFilter ? programFilter.value : "integra";
+        const folders = await loadSharePointFolders(token, selectedProgram);
         renderFolders(folders);
     } catch (error) {
         console.error("Erro ao carregar pastas:", error);
@@ -270,6 +286,10 @@ function bindEvents() {
     helpBtn.onclick = event => {
         event.preventDefault();
         window.open("https://munters-aei.zendesk.com/hc/en-us/requests/new?ticket_form_id=18575973794588", "_blank");
+    };
+
+    programFilter.onchange = () => {
+        loadFoldersForCurrentUser();
     };
 }
 
