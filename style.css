@@ -654,6 +654,27 @@ header {
     font-size: 0.98rem;
 }
 
+.program-filter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.program-filter label {
+    color: #18324f;
+    font-weight: 600;
+}
+
+.program-filter select {
+    min-width: 160px;
+    padding: 9px 12px;
+    border: 1px solid rgba(0, 103, 165, 0.24);
+    border-radius: 6px;
+    background: #fff;
+    color: #18324f;
+    font: inherit;
+}
+
 .sharepoint-link {
     display: inline-flex;
     align-items: center;
