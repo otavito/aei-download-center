@@ -279,6 +279,125 @@ async function loadReleaseNotesContent(token, fileId) {
     return fetchGraphText(contentUrl, token);
 }
 
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function parseInlineMarkdown(text) {
+    let html = escapeHtml(text);
+    html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+    html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    return html;
+}
+
+function markdownToHtml(markdownText) {
+    const text = markdownText || "";
+    const lines = text.replace(/\r\n/g, "\n").split("\n");
+    const htmlParts = [];
+    let index = 0;
+    let inCodeBlock = false;
+    let codeLines = [];
+    let listType = null;
+
+    function closeListIfOpen() {
+        if (listType) {
+            htmlParts.push(listType === "ol" ? "</ol>" : "</ul>");
+            listType = null;
+        }
+    }
+
+    while (index < lines.length) {
+        const line = lines[index];
+        const trimmed = line.trim();
+
+        if (trimmed.startsWith("```")) {
+            closeListIfOpen();
+            if (inCodeBlock) {
+                htmlParts.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+                codeLines = [];
+                inCodeBlock = false;
+            } else {
+                inCodeBlock = true;
+            }
+            index += 1;
+            continue;
+        }
+
+        if (inCodeBlock) {
+            codeLines.push(line);
+            index += 1;
+            continue;
+        }
+
+        if (!trimmed) {
+            closeListIfOpen();
+            index += 1;
+            continue;
+        }
+
+        const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+        if (headingMatch) {
+            closeListIfOpen();
+            const level = headingMatch[1].length;
+            htmlParts.push(`<h${level}>${parseInlineMarkdown(headingMatch[2].trim())}</h${level}>`);
+            index += 1;
+            continue;
+        }
+
+        const unorderedMatch = line.match(/^\s*[-*+]\s+(.+)$/);
+        if (unorderedMatch) {
+            if (listType !== "ul") {
+                closeListIfOpen();
+                htmlParts.push("<ul>");
+                listType = "ul";
+            }
+            htmlParts.push(`<li>${parseInlineMarkdown(unorderedMatch[1].trim())}</li>`);
+            index += 1;
+            continue;
+        }
+
+        const orderedMatch = line.match(/^\s*\d+\.\s+(.+)$/);
+        if (orderedMatch) {
+            if (listType !== "ol") {
+                closeListIfOpen();
+                htmlParts.push("<ol>");
+                listType = "ol";
+            }
+            htmlParts.push(`<li>${parseInlineMarkdown(orderedMatch[1].trim())}</li>`);
+            index += 1;
+            continue;
+        }
+
+        closeListIfOpen();
+        const paragraphLines = [line];
+        index += 1;
+        while (index < lines.length) {
+            const nextLine = lines[index];
+            const nextTrimmed = nextLine.trim();
+            if (!nextTrimmed || /^#{1,6}\s+/.test(nextLine) || /^\s*[-*+]\s+/.test(nextLine) || /^\s*\d+\.\s+/.test(nextLine) || nextTrimmed.startsWith("```")) {
+                break;
+            }
+            paragraphLines.push(nextLine);
+            index += 1;
+        }
+        htmlParts.push(`<p>${parseInlineMarkdown(paragraphLines.join(" ").trim())}</p>`);
+    }
+
+    if (inCodeBlock) {
+        htmlParts.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+    }
+
+    closeListIfOpen();
+    return htmlParts.join("");
+}
+
 function openReleaseNotesModal() {
     if (!releaseNotesModal) {
         return;
@@ -310,7 +429,7 @@ async function handleViewReleaseNotes() {
         releaseNotesButton.disabled = true;
         releaseNotesButton.textContent = "Loading release notes...";
         releaseNotesTitle.textContent = `Release Notes - ${programFolder.label}`;
-        releaseNotesContent.textContent = "Loading release notes...";
+        releaseNotesContent.innerHTML = "<p>Loading release notes...</p>";
         releaseNotesOpenLink.href = "#";
         openReleaseNotesModal();
 
@@ -318,13 +437,15 @@ async function handleViewReleaseNotes() {
         const releaseNotesFile = await loadReleaseNotesFile(token, selectedProgram);
         const releaseNotesText = await loadReleaseNotesContent(token, releaseNotesFile.id);
 
-        releaseNotesContent.textContent = releaseNotesText || "Release notes file is empty.";
+        releaseNotesContent.innerHTML = releaseNotesText
+            ? markdownToHtml(releaseNotesText)
+            : "<p>Release notes file is empty.</p>";
         releaseNotesOpenLink.href = releaseNotesFile.webUrl;
     } catch (error) {
         console.error("Erro ao carregar release notes:", error);
         setStatus("Não foi possível carregar o arquivo de release notes.", "error");
         if (releaseNotesContent) {
-            releaseNotesContent.textContent = "Could not load release notes for this program.";
+            releaseNotesContent.innerHTML = "<p>Could not load release notes for this program.</p>";
         }
     } finally {
         releaseNotesButton.disabled = false;
