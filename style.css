@@ -774,21 +774,6 @@ body.modal-open {
     padding: 0 4px;
 }
 
-.release-notes-modal-actions {
-    padding: 12px 22px;
-    border-bottom: 1px solid rgba(0, 103, 165, 0.12);
-}
-
-.release-notes-open-link {
-    color: var(--primary-color);
-    font-weight: 600;
-    text-decoration: none;
-}
-
-.release-notes-open-link:hover {
-    text-decoration: underline;
-}
-
 .release-notes-content {
     margin: 0;
     padding: 20px 22px 24px;

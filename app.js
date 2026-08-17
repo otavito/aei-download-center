@@ -56,7 +56,6 @@ const releaseNotesButton = document.getElementById("view-release-notes-button");
 const releaseNotesModal = document.getElementById("release-notes-modal");
 const releaseNotesTitle = document.getElementById("release-notes-title");
 const releaseNotesContent = document.getElementById("release-notes-content");
-const releaseNotesOpenLink = document.getElementById("release-notes-open-link");
 const releaseNotesCloseButton = document.getElementById("release-notes-close-button");
 
 function getProgramConfig(program) {
@@ -259,7 +258,7 @@ async function loadSharePointFolders(token, program = "integra") {
 async function loadReleaseNotesFile(token, program = "integra") {
     const programFolder = getProgramConfig(program);
     const folderPath = encodeGraphPath(programFolder.path);
-    const driveUrl = `${GRAPH_BASE}/drives/${DRIVE_ID}/root:${folderPath}:/children?$select=id,name,webUrl,file&$top=999`;
+    const driveUrl = `${GRAPH_BASE}/drives/${DRIVE_ID}/root:${folderPath}:/children?$select=id,name,file&$top=999`;
     const items = await fetchAllGraphItems(driveUrl, token);
 
     const markdownFiles = items.filter(item => item.file && /\.md$/i.test(item.name));
@@ -417,7 +416,7 @@ function closeReleaseNotesModal() {
 }
 
 async function handleViewReleaseNotes() {
-    if (!releaseNotesButton || !programFilter || !releaseNotesTitle || !releaseNotesContent || !releaseNotesOpenLink) {
+    if (!releaseNotesButton || !programFilter || !releaseNotesTitle || !releaseNotesContent) {
         return;
     }
 
@@ -430,7 +429,6 @@ async function handleViewReleaseNotes() {
         releaseNotesButton.textContent = "Loading release notes...";
         releaseNotesTitle.textContent = `Release Notes - ${programFolder.label}`;
         releaseNotesContent.innerHTML = "<p>Loading release notes...</p>";
-        releaseNotesOpenLink.href = "#";
         openReleaseNotesModal();
 
         const token = await getToken();
@@ -440,7 +438,6 @@ async function handleViewReleaseNotes() {
         releaseNotesContent.innerHTML = releaseNotesText
             ? markdownToHtml(releaseNotesText)
             : "<p>Release notes file is empty.</p>";
-        releaseNotesOpenLink.href = releaseNotesFile.webUrl;
     } catch (error) {
         console.error("Erro ao carregar release notes:", error);
         setStatus("Não foi possível carregar o arquivo de release notes.", "error");
