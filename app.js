@@ -235,8 +235,11 @@ function renderFolders(folders) {
     }
 
     const latestVersion = folders.filter(folder => parseVersion(folder.name)).at(-1);
+    const foldersForDisplay = latestVersion
+        ? [latestVersion, ...folders.filter(folder => folder !== latestVersion)]
+        : folders;
 
-    folders.forEach(folder => {
+    foldersForDisplay.forEach(folder => {
         const link = document.createElement("a");
         link.className = folder === latestVersion ? "folder-card latest-version-card" : "folder-card";
         link.href = folder.webUrl;
