@@ -165,6 +165,43 @@ async function fetchAllGraphItems(url, token) {
     return items;
 }
 
+function parseVersion(name) {
+    const normalizedName = name.replace(/^_?Version\s+/i, "").replace(/^_/, "").trim();
+
+    if (!/^\d+(?:\.\d+)*$/.test(normalizedName)) {
+        return null;
+    }
+
+    return normalizedName.split(".").map(Number);
+}
+
+function compareVersions(left, right) {
+    const leftVersion = parseVersion(left.name);
+    const rightVersion = parseVersion(right.name);
+
+    if (!leftVersion && !rightVersion) {
+        return left.name.localeCompare(right.name, "pt-BR");
+    }
+
+    if (!leftVersion) {
+        return 1;
+    }
+
+    if (!rightVersion) {
+        return -1;
+    }
+
+    const segmentCount = Math.max(leftVersion.length, rightVersion.length);
+    for (let index = 0; index < segmentCount; index += 1) {
+        const difference = (leftVersion[index] || 0) - (rightVersion[index] || 0);
+        if (difference !== 0) {
+            return difference;
+        }
+    }
+
+    return left.name.localeCompare(right.name, "pt-BR");
+}
+
 async function loadSharePointFolders(token, program = "integra") {
     const programFolder = PROGRAM_FOLDERS[program] || PROGRAM_FOLDERS.integra;
     const excludedNames = new Set(programFolder.excludedNames || []);
@@ -179,7 +216,7 @@ async function loadSharePointFolders(token, program = "integra") {
             webUrl: item.webUrl,
             lastModifiedDateTime: item.lastModifiedDateTime
         }))
-        .sort((left, right) => left.name.localeCompare(right.name, "pt-BR"));
+        .sort(compareVersions);
 }
 
 function renderFolders(folders) {
@@ -197,9 +234,11 @@ function renderFolders(folders) {
         return;
     }
 
+    const latestVersion = folders.filter(folder => parseVersion(folder.name)).at(-1);
+
     folders.forEach(folder => {
         const link = document.createElement("a");
-        link.className = "folder-card";
+        link.className = folder === latestVersion ? "folder-card latest-version-card" : "folder-card";
         link.href = folder.webUrl;
         link.target = "_blank";
         link.rel = "noopener noreferrer";
@@ -217,6 +256,13 @@ function renderFolders(folders) {
 
         const title = document.createElement("h3");
         title.textContent = folder.name;
+
+        if (folder === latestVersion) {
+            const latestLabel = document.createElement("span");
+            latestLabel.className = "latest-version-label";
+            latestLabel.textContent = "Latest version";
+            body.appendChild(latestLabel);
+        }
 
         const meta = document.createElement("p");
         meta.textContent = folder.lastModifiedDateTime
