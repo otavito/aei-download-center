@@ -24,13 +24,19 @@ const SHAREPOINT_FOLDER_PATH = "/R&D/Software Releases";
 const PROGRAM_FOLDERS = {
     integra: {
         path: SHAREPOINT_FOLDER_PATH,
-        excludedNames: ["Config", "IntraE"]
+        excludedNames: ["Config", "IntraE"],
+        releaseNotesFileName: "Integra.md",
+        label: "Integra"
     },
     intrae: {
-        path: `${SHAREPOINT_FOLDER_PATH}/IntraE`
+        path: `${SHAREPOINT_FOLDER_PATH}/IntraE`,
+        releaseNotesFileName: "IntraE.md",
+        label: "IntraE"
     },
     config: {
-        path: `${SHAREPOINT_FOLDER_PATH}/Config`
+        path: `${SHAREPOINT_FOLDER_PATH}/Config`,
+        releaseNotesFileName: "Config.md",
+        label: "Config"
     }
 };
 
@@ -46,6 +52,16 @@ const loginError = document.getElementById("login-error");
 const statusMessage = document.getElementById("file-operation-status");
 const foldersGrid = document.getElementById("folders-grid");
 const programFilter = document.getElementById("program-filter");
+const releaseNotesButton = document.getElementById("view-release-notes-button");
+const releaseNotesModal = document.getElementById("release-notes-modal");
+const releaseNotesTitle = document.getElementById("release-notes-title");
+const releaseNotesContent = document.getElementById("release-notes-content");
+const releaseNotesOpenLink = document.getElementById("release-notes-open-link");
+const releaseNotesCloseButton = document.getElementById("release-notes-close-button");
+
+function getProgramConfig(program) {
+    return PROGRAM_FOLDERS[program] || PROGRAM_FOLDERS.integra;
+}
 
 function setLoginError(message = "") {
     if (!loginError) {
@@ -101,6 +117,7 @@ function showUnauthenticatedView() {
     document.getElementById("login-header-button").style.display = "inline-block";
     document.getElementById("logout-button").style.display = "none";
     document.getElementById("help-button").style.display = "none";
+    closeReleaseNotesModal();
 }
 
 function encodeGraphPath(path) {
@@ -148,6 +165,26 @@ async function fetchGraphJson(url, token) {
     }
 
     return response.json();
+}
+
+async function fetchGraphText(url, token) {
+    const response = await fetch(url, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "text/plain"
+        }
+    });
+
+    if (!response.ok) {
+        const details = await response.text();
+        const error = new Error(`Graph API error ${response.status}: ${response.statusText}`);
+        error.status = response.status;
+        error.details = details;
+        throw error;
+    }
+
+    return response.text();
 }
 
 async function fetchAllGraphItems(url, token) {
@@ -203,7 +240,7 @@ function compareVersions(left, right) {
 }
 
 async function loadSharePointFolders(token, program = "integra") {
-    const programFolder = PROGRAM_FOLDERS[program] || PROGRAM_FOLDERS.integra;
+    const programFolder = getProgramConfig(program);
     const excludedNames = new Set(programFolder.excludedNames || []);
     const folderPath = encodeGraphPath(programFolder.path);
     const driveUrl = `${GRAPH_BASE}/drives/${DRIVE_ID}/root:${folderPath}:/children?$select=name,webUrl,folder,lastModifiedDateTime&$top=999`;
@@ -217,6 +254,78 @@ async function loadSharePointFolders(token, program = "integra") {
             lastModifiedDateTime: item.lastModifiedDateTime
         }))
         .sort(compareVersions);
+}
+
+async function loadReleaseNotesFile(token, program = "integra") {
+    const programFolder = getProgramConfig(program);
+    const folderPath = encodeGraphPath(programFolder.path);
+    const driveUrl = `${GRAPH_BASE}/drives/${DRIVE_ID}/root:${folderPath}:/children?$select=id,name,webUrl,file&$top=999`;
+    const items = await fetchAllGraphItems(driveUrl, token);
+
+    const markdownFiles = items.filter(item => item.file && /\.md$/i.test(item.name));
+    if (!markdownFiles.length) {
+        throw new Error("Nenhum arquivo .md encontrado para o programa selecionado.");
+    }
+
+    const preferredName = (programFolder.releaseNotesFileName || "").toLowerCase();
+    const selectedFile = markdownFiles.find(item => item.name.toLowerCase() === preferredName)
+        || [...markdownFiles].sort((left, right) => left.name.localeCompare(right.name, "pt-BR"))[0];
+
+    return selectedFile;
+}
+
+async function loadReleaseNotesContent(token, fileId) {
+    const contentUrl = `${GRAPH_BASE}/drives/${DRIVE_ID}/items/${fileId}/content`;
+    return fetchGraphText(contentUrl, token);
+}
+
+function openReleaseNotesModal() {
+    if (!releaseNotesModal) {
+        return;
+    }
+
+    releaseNotesModal.hidden = false;
+    document.body.classList.add("modal-open");
+}
+
+function closeReleaseNotesModal() {
+    if (!releaseNotesModal) {
+        return;
+    }
+
+    releaseNotesModal.hidden = true;
+    document.body.classList.remove("modal-open");
+}
+
+async function handleViewReleaseNotes() {
+    if (!releaseNotesButton || !programFilter || !releaseNotesTitle || !releaseNotesContent || !releaseNotesOpenLink) {
+        return;
+    }
+
+    const defaultLabel = "View Release Notes";
+    try {
+        const selectedProgram = programFilter.value || "integra";
+        const programFolder = getProgramConfig(selectedProgram);
+
+        releaseNotesButton.disabled = true;
+        releaseNotesButton.textContent = "Loading release notes...";
+
+        const token = await getToken();
+        const releaseNotesFile = await loadReleaseNotesFile(token, selectedProgram);
+        const releaseNotesText = await loadReleaseNotesContent(token, releaseNotesFile.id);
+
+        releaseNotesTitle.textContent = `Release Notes - ${programFolder.label}`;
+        releaseNotesContent.textContent = releaseNotesText || "Release notes file is empty.";
+        releaseNotesOpenLink.href = releaseNotesFile.webUrl;
+
+        openReleaseNotesModal();
+    } catch (error) {
+        console.error("Erro ao carregar release notes:", error);
+        setStatus("Não foi possível carregar o arquivo de release notes.", "error");
+    } finally {
+        releaseNotesButton.disabled = false;
+        releaseNotesButton.textContent = defaultLabel;
+    }
 }
 
 function renderFolders(folders) {
@@ -342,6 +451,32 @@ function bindEvents() {
     programFilter.onchange = () => {
         loadFoldersForCurrentUser();
     };
+
+    if (releaseNotesButton) {
+        releaseNotesButton.onclick = () => {
+            handleViewReleaseNotes();
+        };
+    }
+
+    if (releaseNotesCloseButton) {
+        releaseNotesCloseButton.onclick = () => {
+            closeReleaseNotesModal();
+        };
+    }
+
+    if (releaseNotesModal) {
+        releaseNotesModal.onclick = event => {
+            if (event.target === releaseNotesModal) {
+                closeReleaseNotesModal();
+            }
+        };
+    }
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && releaseNotesModal && !releaseNotesModal.hidden) {
+            closeReleaseNotesModal();
+        }
+    });
 }
 
 async function bootstrap() {
